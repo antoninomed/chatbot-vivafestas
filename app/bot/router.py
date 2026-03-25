@@ -297,15 +297,14 @@ def _nome_empresa(db: Session, tenant_id) -> str:
 
 async def _enviar_localizacao_loja(db: Session, tenant_id, telefone: str):
     endereco = (
-        "Rua Exemplo, 123 - Centro\n"
-        "São Luís - MA\n"
-        "Ponto de referência: próximo à praça principal."
+        "Rua 16, Quadra 10, Número 54- Cohatrac II \n"
+        "São Luís - MA"
     )
 
     nome_loja = _nome_empresa(db, tenant_id)
 
-    latitude = -2.5297
-    longitude = -44.3028
+    latitude = -2.5377014
+    longitude = -44.1979748
 
     await _enviar_texto(
         db,
@@ -319,7 +318,7 @@ async def _enviar_localizacao_loja(db: Session, tenant_id, telefone: str):
         latitude=latitude,
         longitude=longitude,
         name=nome_loja,
-        address="Rua Exemplo, 123 - Centro, São Luís - MA",
+        address="Rua 16, Quadra 10, Número 54 - Cohatrac II, São Luís - MA",
     )
 
     salvar_mensagem(
