@@ -51,14 +51,20 @@ def _render(request: Request, template_name: str, context: dict | None = None, s
 
 def _usuario_atual(request: Request, db: Session):
     sessao = obter_usuario_logado(request)
+    if isinstance(sessao, RedirectResponse):
+        return None
     if not sessao:
         return None
-    return db.query(UsuarioAdmin).filter(UsuarioAdmin.id == sessao["usuario_id"]).first()
+
+    usuario_id = sessao.get("usuario_id")
+    if not usuario_id:
+        return None
+
+    return db.query(UsuarioAdmin).filter(UsuarioAdmin.id == usuario_id).first()
 
 
 def _redirect_login():
-    return RedirectResponse(url="/admin/login", status_code=302)
-
+    return RedirectResponse(url="/admin/login", status_code=303)
 
 def _somente_digitos(valor: str | None) -> str:
     if not valor:
@@ -548,7 +554,7 @@ def listar_conversas(request: Request, busca: str = "", db: Session = Depends(ge
 def listar_conversas_parcial(request: Request, busca: str = "", db: Session = Depends(get_db)):
     usuario = _usuario_atual(request, db)
     if not usuario:
-        return HTMLResponse("Não autorizado", status_code=401)
+        return _redirect_login()
 
     conversas = _enriquecer_conversas(db, usuario.tenant_id, _query_conversas(usuario, db), busca)
 
@@ -561,6 +567,7 @@ def listar_conversas_parcial(request: Request, busca: str = "", db: Session = De
             "busca": busca,
         },
     )
+
 
 
 @router.get("/conversas/{telefone}", response_class=HTMLResponse)
@@ -612,7 +619,7 @@ def detalhe_conversa(telefone: str, request: Request, db: Session = Depends(get_
 def carregar_mensagens_conversa(telefone: str, request: Request, db: Session = Depends(get_db)):
     usuario = _usuario_atual(request, db)
     if not usuario:
-        return HTMLResponse("Não autorizado", status_code=401)
+        return _redirect_login()
 
     mensagens = (
         db.query(MensagemWhatsapp)
