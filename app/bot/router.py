@@ -831,6 +831,7 @@ async def _enviar_detalhes_kit(db: Session, tenant_id, telefone: str, kit):
     msg = (
         f"🎉 *{_nome_kit(kit)}*\n\n"
         f"📦 Categoria: {kit.categoria or '-'}\n"
+        f"📋 Descrição: {kit.descricao or '-'}\n"
         f"💰 Valor: {_formatar_valor_brl(kit.valor_locacao) or 'sob consulta'}\n"
     )
 
