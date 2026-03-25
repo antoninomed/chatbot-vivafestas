@@ -10,8 +10,8 @@ tenant = db.query(Tenant).first()
 admin = UsuarioAdmin(
     id=uuid.uuid4(),
     nome="Administrador",
-    email="admin@admin.com",
-    senha_hash=bcrypt.hash("123456"),
+    email="admin@vivafestas.com",
+    senha_hash=bcrypt.hash("viva123"),
     tenant_id=tenant.id
 )
 
