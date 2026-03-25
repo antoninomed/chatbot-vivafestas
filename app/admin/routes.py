@@ -39,6 +39,14 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory="app/templates")
 
 
+def _render(request: Request, template_name: str, context: dict | None = None, status_code: int = 200):
+    context = context or {}
+    return templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context=context,
+        status_code=status_code,
+    )
 
 
 def _usuario_atual(request: Request, db: Session):
@@ -476,10 +484,13 @@ def _enriquecer_conversas(db: Session, tenant_id, conversas, busca: str = ""):
     return resultado
 
 
-@router.get("/login", response_class=HTMLResponse)
+@router.get("/login")
 def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "erro": None})
-
+    return _render(
+        request,
+        "login.html",
+        {"erro": None},
+    )
 
 
 @router.post("/login")
@@ -491,9 +502,10 @@ def login_submit(
 ):
     usuario = db.query(UsuarioAdmin).filter(UsuarioAdmin.email == email).first()
     if not usuario or not verificar_senha(senha, usuario.senha_hash):
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "login.html",
-            {"request": request, "erro": "Credenciais inválidas."},
+            {"erro": "Credenciais inválidas."},
             status_code=400,
         )
 
@@ -525,9 +537,10 @@ def listar_conversas(request: Request, busca: str = "", db: Session = Depends(ge
         return _redirect_login()
 
     conversas = _enriquecer_conversas(db, usuario.tenant_id, _query_conversas(usuario, db), busca)
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "conversas.html",
-        {"request": request, "usuario": usuario, "conversas": conversas, "busca": busca},
+        {"usuario": usuario, "conversas": conversas, "busca": busca},
     )
 
 
@@ -539,10 +552,10 @@ def listar_conversas_parcial(request: Request, busca: str = "", db: Session = De
 
     conversas = _enriquecer_conversas(db, usuario.tenant_id, _query_conversas(usuario, db), busca)
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "partials/conversas_lista.html",
         {
-            "request": request,
             "usuario": usuario,
             "conversas": conversas,
             "busca": busca,
@@ -579,10 +592,10 @@ def detalhe_conversa(telefone: str, request: Request, db: Session = Depends(get_
     nome_exibicao = nome_cliente or telefone
     cliente_existe = bool(nome_cliente)
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "conversa_detalhe.html",
         {
-            "request": request,
             "usuario": usuario,
             "telefone": telefone,
             "mensagens": mensagens,
@@ -624,10 +637,10 @@ def carregar_mensagens_conversa(telefone: str, request: Request, db: Session = D
     nome_exibicao = nome_cliente or telefone
     cliente_existe = bool(nome_cliente)
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "partials/conversa_mensagens.html",
         {
-            "request": request,
             "usuario": usuario,
             "telefone": telefone,
             "mensagens": mensagens,
@@ -664,7 +677,6 @@ def encerrar_conversa(telefone: str, request: Request, db: Session = Depends(get
     return RedirectResponse(url="/admin/conversas", status_code=303)
 
 
-
 @router.post("/webhook")
 async def webhook(request: Request):
     print("\n[WEBHOOK] POST recebido")
@@ -674,7 +686,6 @@ async def webhook(request: Request):
     print("[WEBHOOK] raw body:", raw_body.decode("utf-8", errors="ignore"))
 
     return Response(status_code=200)
-
 
 
 @router.post("/conversas/{telefone}/responder")
@@ -785,9 +796,10 @@ def listar_kits(request: Request, busca: str = "", db: Session = Depends(get_db)
 
     kits = query.order_by(KitFesta.nome_kit.asc()).all()
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "kits.html",
-        {"request": request, "usuario": usuario, "kits": kits, "busca": busca},
+        {"usuario": usuario, "kits": kits, "busca": busca},
     )
 
 
@@ -795,7 +807,11 @@ def listar_kits(request: Request, busca: str = "", db: Session = Depends(get_db)
 def kit_novo(request: Request, db: Session = Depends(get_db)):
     if not _usuario_atual(request, db):
         return _redirect_login()
-    return templates.TemplateResponse("kit_novo.html", {"request": request, "kit": None, "erro": None})
+    return _render(
+        request,
+        "kit_novo.html",
+        {"kit": None, "erro": None},
+    )
 
 
 @router.post("/kits/novo")
@@ -876,10 +892,10 @@ def editar_kit_page(kit_id: str, request: Request, db: Session = Depends(get_db)
     if not kit:
         return RedirectResponse(url="/admin/kits", status_code=302)
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "kit_editar.html",
         {
-            "request": request,
             "usuario": usuario,
             "kit": kit,
         },
@@ -998,10 +1014,10 @@ def listar_clientes(request: Request, busca: str = "", db: Session = Depends(get
     clientes_db = query.order_by(Cliente.nome.asc()).all()
     clientes = [_montar_cliente_view(cliente) for cliente in clientes_db]
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "clientes.html",
         {
-            "request": request,
             "usuario": usuario,
             "clientes": clientes,
             "busca": busca,
@@ -1015,10 +1031,10 @@ def novo_cliente_form(request: Request, db: Session = Depends(get_db)):
     if not usuario:
         return _redirect_login()
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "cliente_novo.html",
         {
-            "request": request,
             "usuario": usuario,
             "erro": None,
         },
@@ -1045,10 +1061,10 @@ def novo_cliente_submit(
     cpf = _somente_digitos(cpf) if cpf else None
 
     if not nome or not telefone:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "cliente_novo.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "erro": "Nome e telefone são obrigatórios.",
             },
@@ -1056,10 +1072,10 @@ def novo_cliente_submit(
         )
 
     if not _telefone_brasileiro_valido_flexivel(telefone_digitado):
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "cliente_novo.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "erro": "Informe um telefone válido no formato brasileiro com +55 e DDD.",
             },
@@ -1067,10 +1083,10 @@ def novo_cliente_submit(
         )
 
     if cpf and not _cpf_valido(cpf):
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "cliente_novo.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "erro": "Informe um CPF válido.",
             },
@@ -1086,10 +1102,10 @@ def novo_cliente_submit(
         .first()
     )
     if cliente_existente:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "cliente_novo.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "erro": "Já existe um cliente com esse telefone para esta empresa.",
             },
@@ -1109,10 +1125,10 @@ def novo_cliente_submit(
         return RedirectResponse("/admin/clientes", status_code=302)
     except IntegrityError:
         db.rollback()
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "cliente_novo.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "erro": "Não foi possível cadastrar o cliente.",
             },
@@ -1130,10 +1146,10 @@ def editar_cliente_form(cliente_id: str, request: Request, db: Session = Depends
     if not cliente:
         return RedirectResponse("/admin/clientes", status_code=302)
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "cliente_editar.html",
         {
-            "request": request,
             "usuario": usuario,
             "cliente": cliente,
             "erro": None,
@@ -1175,10 +1191,10 @@ def editar_cliente_submit(
         saldo_str = saldo_str.replace(",", ".")
 
     if not nome or not telefone:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "cliente_editar.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "cliente": cliente,
                 "erro": "Nome e telefone são obrigatórios.",
@@ -1187,10 +1203,10 @@ def editar_cliente_submit(
         )
 
     if not _telefone_brasileiro_valido_flexivel(telefone_digitado):
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "cliente_editar.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "cliente": cliente,
                 "erro": "Informe um telefone válido no formato brasileiro com +55 e DDD.",
@@ -1199,10 +1215,10 @@ def editar_cliente_submit(
         )
 
     if cpf and not _cpf_valido(cpf):
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "cliente_editar.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "cliente": cliente,
                 "erro": "Informe um CPF válido.",
@@ -1213,10 +1229,10 @@ def editar_cliente_submit(
     try:
         saldo_decimal = Decimal(saldo_str or "0").quantize(Decimal("0.01"))
     except (InvalidOperation, ValueError):
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "cliente_editar.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "cliente": cliente,
                 "erro": "Informe um saldo válido.",
@@ -1234,10 +1250,10 @@ def editar_cliente_submit(
         .first()
     )
     if cliente_existente:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "cliente_editar.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "cliente": cliente,
                 "erro": "Já existe outro cliente com esse telefone para esta empresa.",
@@ -1257,18 +1273,18 @@ def editar_cliente_submit(
 
     except IntegrityError:
         db.rollback()
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "cliente_editar.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "cliente": cliente,
                 "erro": "Não foi possível atualizar o cliente.",
             },
             status_code=400,
         )
-    
-    
+
+
 @router.post("/clientes/{cliente_id}/excluir")
 def excluir_cliente_submit(cliente_id: str, request: Request, db: Session = Depends(get_db)):
     usuario = _usuario_atual(request, db)
@@ -1292,10 +1308,10 @@ def configuracoes_page(request: Request, db: Session = Depends(get_db)):
 
     empresa = db.query(Tenant).filter(Tenant.id == usuario.tenant_id).first()
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "configuracoes.html",
         {
-            "request": request,
             "usuario": usuario,
             "escola": empresa,
             "empresa": empresa,
@@ -1329,10 +1345,10 @@ def listar_registros_alugueis(
 
     registros = query.order_by(RegistroAluguel.created_at.desc()).all()
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "registros-alugueis.html",
         {
-            "request": request,
             "usuario": usuario,
             "registros": registros,
             "busca": busca,
@@ -1359,10 +1375,10 @@ def novo_registro_aluguel_form(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "registro_aluguel_novo.html",
         {
-            "request": request,
             "usuario": usuario,
             "clientes": clientes,
             "kits": kits,
@@ -1410,10 +1426,10 @@ def novo_registro_aluguel_submit(
     kit_uuid = _parse_uuid(kit_id)
 
     if not cliente_uuid or not kit_uuid:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "registro_aluguel_novo.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "clientes": clientes,
                 "kits": kits,
@@ -1437,10 +1453,10 @@ def novo_registro_aluguel_submit(
     )
 
     if not cliente or not kit:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "registro_aluguel_novo.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "clientes": clientes,
                 "kits": kits,
@@ -1453,10 +1469,10 @@ def novo_registro_aluguel_submit(
         )
 
     if _cliente_esta_bloqueado_por_debito(cliente):
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "registro_aluguel_novo.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "clientes": clientes,
                 "kits": kits,
@@ -1472,10 +1488,10 @@ def novo_registro_aluguel_submit(
     data_entrega_dt = _parse_date(data_entrega)
 
     if not data_reserva_dt or not data_entrega_dt:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "registro_aluguel_novo.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "clientes": clientes,
                 "kits": kits,
@@ -1488,10 +1504,10 @@ def novo_registro_aluguel_submit(
         )
 
     if data_entrega_dt < data_reserva_dt:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "registro_aluguel_novo.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "clientes": clientes,
                 "kits": kits,
@@ -1504,10 +1520,10 @@ def novo_registro_aluguel_submit(
         )
 
     if existe_conflito_reserva(db, usuario.tenant_id, kit.id, data_reserva_dt, data_entrega_dt):
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "registro_aluguel_novo.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "clientes": clientes,
                 "kits": kits,
@@ -1574,10 +1590,10 @@ def editar_registro_aluguel_form(
     data_reserva_valor = registro.data_reserva.strftime("%Y-%m-%d") if registro.data_reserva else ""
     data_entrega_valor = registro.data_entrega.strftime("%Y-%m-%d") if registro.data_entrega else ""
 
-    return templates.TemplateResponse(
+    return _render(
+        request,
         "editar_registro.html",
         {
-            "request": request,
             "usuario": usuario,
             "registro": registro,
             "clientes": clientes,
@@ -1630,10 +1646,10 @@ def editar_registro_aluguel_submit(
     kit_uuid = _parse_uuid(kit_id)
 
     if not cliente_uuid or not kit_uuid:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "editar_registro.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "registro": registro,
                 "clientes": clientes,
@@ -1657,10 +1673,10 @@ def editar_registro_aluguel_submit(
     )
 
     if not cliente or not kit:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "editar_registro.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "registro": registro,
                 "clientes": clientes,
@@ -1673,10 +1689,10 @@ def editar_registro_aluguel_submit(
         )
 
     if _cliente_esta_bloqueado_por_debito(cliente) and str(registro.cliente_id) != str(cliente.id):
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "editar_registro.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "registro": registro,
                 "clientes": clientes,
@@ -1692,10 +1708,10 @@ def editar_registro_aluguel_submit(
     data_entrega_dt = _parse_date(data_entrega)
 
     if not data_reserva_dt or not data_entrega_dt:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "editar_registro.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "registro": registro,
                 "clientes": clientes,
@@ -1708,10 +1724,10 @@ def editar_registro_aluguel_submit(
         )
 
     if data_entrega_dt < data_reserva_dt:
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "editar_registro.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "registro": registro,
                 "clientes": clientes,
@@ -1731,10 +1747,10 @@ def editar_registro_aluguel_submit(
         data_entrega_dt,
         ignorar_registro_id=registro.id,
     ):
-        return templates.TemplateResponse(
+        return _render(
+            request,
             "editar_registro.html",
             {
-                "request": request,
                 "usuario": usuario,
                 "registro": registro,
                 "clientes": clientes,
@@ -1850,7 +1866,6 @@ def cancelar_registro_aluguel(
     return RedirectResponse("/admin/registros-alugueis", status_code=302)
 
 
-
 @router.post("/conversas/{telefone}/apagar")
 def apagar_conversa(telefone: str, request: Request, db: Session = Depends(get_db)):
     usuario = _usuario_atual(request, db)
@@ -1883,7 +1898,6 @@ def apagar_conversa(telefone: str, request: Request, db: Session = Depends(get_d
 
     db.commit()
     return RedirectResponse(url="/admin/conversas", status_code=303)
-
 
 
 @router.post("/registros-alugueis/{registro_id}/excluir")
