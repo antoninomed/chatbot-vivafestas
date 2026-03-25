@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% block title %}Editar kit{% endblock %}
+{% block page_title %}Editar kit{% endblock %}
+
+{% block content %}
+<div class="kit-edit-page">
+  <div class="panel-card narrow-card kit-edit-card">
+
+    <div class="kit-edit-header">
+      <div class="kit-edit-title-wrap">
+        <div class="kit-edit-eyebrow">GESTÃO DE KIT</div>
+        <div class="kit-edit-title-row">
+          <div>
+            <h2 class="kit-edit-title">{{ kit.nome_kit }}</h2>
+            <p class="kit-edit-subtitle">
+              Atualize informações, organize imagens e mantenha o cadastro do kit sempre pronto para locação.
+            </p>
+          </div>
+
+          <div class="kit-status-chip {% if kit.status_disponibilidade == 'Disponível' %}is-available{% else %}is-unavailable{% endif %}">
+            <span class="kit-status-dot"></span>
+            {{ kit.status_disponibilidade or 'Sem status' }}
+          </div>
+        </div>
+      </div>
+
+      <form
+        method="post"
+        action="/admin/kits/{{ kit.id }}/excluir"
+        onsubmit="return confirm('Tem certeza que deseja excluir este kit?');"
+        class="kit-delete-form"
+      >
+        <button class="btn btn-outline-danger kit-delete-btn" type="submit">
+          <i class="bi bi-trash3"></i>
+          <span>Excluir</span>
+        </button>
+      </form>
+    </div>
+
+    <form method="post" class="kit-edit-form" enctype="multipart/form-data">
+      <div class="kit-section">
+        <div class="kit-section-head">
+          <div>
+            <h3 class="kit-section-title">Informações principais</h3>
+            <p class="kit-section-text">
+              Preencha os dados essenciais para identificação, organização e locação do kit.
+            </p>
+          </div>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-md-6">
+            <label class="form-label">Categoria</label>
+            <input class="form-control kit-input" name="categoria" value="{{ kit.categoria or '' }}" placeholder="Ex.: Decoração temática">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Tema</label>
+            <input class="form-control kit-input" name="tema" value="{{ kit.tema or '' }}" placeholder="Ex.: Safari, Princesas, Boteco">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Código do kit</label>
+            <input class="form-control kit-input" name="codigo_kit" value="{{ kit.codigo_kit or '' }}" placeholder="Ex.: KIT-0007">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Valor da locação</label>
+            <input class="form-control kit-input" name="valor_locacao" value="{{ kit.valor_locacao or '' }}" placeholder="Ex.: 350,00">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Disponibilidade</label>
+            <select class="form-select kit-input" name="status_disponibilidade">
+              <option value="Disponível" {% if kit.status_disponibilidade == "Disponível" %}selected{% endif %}>
+                Disponível
+              </option>
+              <option value="Indisponível" {% if kit.status_disponibilidade == "Indisponível" %}selected{% endif %}>
+                Indisponível
+              </option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Quantidade de itens</label>
+            <input class="form-control kit-input" name="quantidade_itens" value="{{ kit.quantidade_itens or '' }}" placeholder="Ex.: 25">
+          </div>
+        </div>
+      </div>
+
+      <div class="kit-section">
+        <div class="kit-section-head">
+          <div>
+            <h3 class="kit-section-title">Galeria do kit</h3>
+            <p class="kit-section-text">
+              Revise as fotos atuais, marque imagens para exclusão e adicione novas imagens ao cadastro.
+            </p>
+          </div>
+        </div>
+
+        {% if kit.fotos %}
+        <div class="kit-photos-grid">
+          {% for foto in kit.fotos %}
+          <div class="kit-photo-col">
+            <label class="foto-card-excluir" for="foto_{{ foto.id }}">
+              <input
+                class="foto-checkbox"
+                type="checkbox"
+                name="fotos_excluir"
+                value="{{ foto.id }}"
+                id="foto_{{ foto.id }}"
+              >
+
+              <div class="foto-preview-card">
+                <img
+                  src="{{ foto.foto_url }}"
+                  class="foto-preview-img"
+                  alt="Foto do kit"
+                >
+
+                <div class="foto-card-topbar">
+                  <span class="foto-card-action">
+                    <i class="bi bi-trash3"></i>
+                  </span>
+                </div>
+
+                <div class="foto-card-bottom">
+                  <span class="foto-card-caption">Clique para marcar exclusão</span>
+                </div>
+
+                <div class="foto-overlay-selected">
+                  <div class="foto-selected-content">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>Marcada para exclusão</span>
+                  </div>
+                </div>
+              </div>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="kit-empty-gallery">
+          <div class="kit-empty-gallery-icon">
+            <i class="bi bi-images"></i>
+          </div>
+          <div>
+            <h4>Nenhuma foto cadastrada</h4>
+            <p>Adicione imagens para valorizar a apresentação do kit.</p>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="kit-upload-box mt-4">
+            <div class="kit-upload-head">
+                <div class="kit-upload-icon">
+                <i class="bi bi-cloud-arrow-up"></i>
+                </div>
+                <div>
+                <h4 class="kit-upload-title">Adicionar novas fotos</h4>
+                <p class="kit-upload-text">
+                    Selecione uma ou mais imagens para complementar a galeria do kit.
+                </p>
+                </div>
+            </div>
+
+            <div class="kit-upload-dropzone" id="kitUploadTrigger">
+                <div class="kit-upload-dropzone-content">
+                <div class="kit-upload-dropzone-badge">
+                    <i class="bi bi-images"></i>
+                </div>
+
+                <div class="kit-upload-dropzone-texts">
+                    <h5>Selecionar imagens</h5>
+                    <p>PNG, JPG ou WEBP. Você pode enviar várias fotos de uma vez.</p>
+                </div>
+
+                <button type="button" class="kit-upload-select-btn">
+                    <i class="bi bi-folder2-open"></i>
+                    <span>Escolher arquivos</span>
+                </button>
+                </div>
+
+                <input
+                type="file"
+                class="kit-file-input-hidden"
+                id="kitFotosInput"
+                name="fotos"
+                accept="image/*"
+                multiple
+                >
+            </div>
+
+            <div class="kit-upload-files" id="kitUploadFiles">
+                <div class="kit-upload-files-empty">
+                Nenhum arquivo selecionado ainda.
+                </div>
+            </div>
+            </div>
+      </div>
+
+      <div class="kit-section">
+        <div class="kit-section-head">
+          <div>
+            <h3 class="kit-section-title">Detalhes complementares</h3>
+            <p class="kit-section-text">
+              Use estes campos para descrever melhor o conteúdo do kit e registrar observações importantes.
+            </p>
+          </div>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-12">
+            <label class="form-label">Descrição</label>
+            <textarea class="form-control kit-textarea" name="descricao" rows="4" placeholder="Descreva os itens, o estilo e os diferenciais do kit.">{{ kit.descricao or '' }}</textarea>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Observações</label>
+            <textarea class="form-control kit-textarea" name="observacoes" rows="4" placeholder="Anote cuidados, restrições, condições de uso ou detalhes operacionais.">{{ kit.observacoes or '' }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="kit-actions-bar">
+        <a class="btn btn-outline-secondary kit-back-btn" href="/admin/kits">
+          <i class="bi bi-arrow-left"></i>
+          <span>Voltar</span>
+        </a>
+
+        <button class="btn btn-danger kit-save-btn" type="submit">
+          <i class="bi bi-check2-circle"></i>
+          <span>Salvar alterações</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const trigger = document.getElementById("kitUploadTrigger");
+    const input = document.getElementById("kitFotosInput");
+    const filesBox = document.getElementById("kitUploadFiles");
+
+    if (!trigger || !input || !filesBox) return;
+
+    trigger.addEventListener("click", function () {
+      input.click();
+    });
+
+    input.addEventListener("change", function () {
+      renderFiles(input.files);
+    });
+
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+      return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    }
+
+    function renderFiles(files) {
+      if (!files || files.length === 0) {
+        trigger.classList.remove("is-active");
+        filesBox.innerHTML = `
+          <div class="kit-upload-files-empty">
+            Nenhum arquivo selecionado ainda.
+          </div>
+        `;
+        return;
+      }
+
+      trigger.classList.add("is-active");
+
+      let html = `<div class="kit-upload-files-list">`;
+
+      Array.from(files).forEach((file) => {
+        html += `
+          <div class="kit-upload-file-item">
+            <div class="kit-upload-file-left">
+              <div class="kit-upload-file-icon">
+                <i class="bi bi-image"></i>
+              </div>
+              <div class="kit-upload-file-meta">
+                <p class="kit-upload-file-name">${file.name}</p>
+                <p class="kit-upload-file-size">${formatFileSize(file.size)}</p>
+              </div>
+            </div>
+            <span class="kit-upload-file-badge">Pronto</span>
+          </div>
+        `;
+      });
+
+      html += `</div>`;
+      filesBox.innerHTML = html;
+    }
+  })();
+</script>
+
+
+{% endblock %}
+

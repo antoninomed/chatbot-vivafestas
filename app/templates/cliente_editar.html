@@ -1,0 +1,510 @@
+{% extends "base.html" %}
+{% block title %}Editar cliente{% endblock %}
+{% block page_title %}Editar cliente{% endblock %}
+{% block page_subtitle %}Atualize os dados cadastrais do cliente.{% endblock %}
+
+{% block page_actions %}
+<a href="/admin/clientes" class="quick-chip">
+  <i class="bi bi-arrow-left"></i> Voltar
+</a>
+{% endblock %}
+
+{% block content %}
+
+<style>
+  .client-form-card{
+    max-width: 920px;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+
+  .client-form-header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+
+  .client-form-body{
+    padding:24px;
+  }
+
+  .client-form-grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:16px;
+  }
+
+  .client-form-grid .full-width{
+    grid-column:1 / -1;
+  }
+
+  .client-form-label{
+    font-weight:600;
+    margin-bottom:8px;
+    color:var(--bs-heading-color, #212529);
+  }
+
+  .client-form-control{
+    min-height:48px;
+    border-radius:14px;
+  }
+
+  .client-form-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-top:24px;
+    padding-top:20px;
+    border-top:1px solid rgba(0,0,0,.06);
+  }
+
+  .client-form-actions-left,
+  .client-form-actions-right{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .client-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:10px;
+  }
+
+  .client-meta-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 12px;
+    border-radius:999px;
+    background:rgba(220, 53, 69, 0.08);
+    color:#b02a37;
+    font-size:.86rem;
+    font-weight:600;
+  }
+
+  .client-meta-pill.is-neutral{
+    background:rgba(108, 117, 125, 0.10);
+    color:var(--bs-secondary-color, #6c757d);
+  }
+
+  .client-danger-btn{
+    border-radius:12px;
+    font-weight:600;
+  }
+
+  @media (max-width: 768px){
+    .client-form-body{
+      padding:16px;
+    }
+
+    .client-form-grid{
+      grid-template-columns:1fr;
+    }
+
+    .client-form-actions{
+      flex-direction:column-reverse;
+      align-items:stretch;
+    }
+
+    .client-form-actions-left,
+    .client-form-actions-right{
+      width:100%;
+    }
+
+    .client-form-actions-left .btn,
+    .client-form-actions-right .btn,
+    .client-danger-btn{
+      width:100%;
+    }
+  }
+</style>
+
+<div class="panel-card client-form-card">
+  <div class="panel-card-header client-form-header">
+    <div>
+      <div class="section-eyebrow">CADASTRO DE CLIENTE</div>
+      <h5 class="mb-1">{{ cliente.nome or 'Cliente sem nome' }}</h5>
+      <p class="table-helper mb-0">
+        Atualize os dados do cliente. O histórico de kits alugados agora é controlado pelos registros de aluguel.
+      </p>
+
+      <div class="client-meta">
+        <span class="client-meta-pill is-neutral" id="client-meta-telefone">
+          <i class="bi bi-telephone"></i>
+          {{ cliente.telefone or 'Telefone não informado' }}
+        </span>
+
+        {% if cliente.cpf %}
+        <span class="client-meta-pill is-neutral" id="client-meta-cpf">
+          <i class="bi bi-person-vcard"></i>
+          {{ cliente.cpf }}
+        </span>
+        {% endif %}
+
+        <span class="client-meta-pill is-neutral" id="client-meta-saldo">
+          <i class="bi bi-cash-stack"></i>
+          Saldo: R$ {{ '%.2f'|format((cliente.saldo or 0)|float) }}
+        </span>
+      </div>
+    </div>
+
+    <form
+      method="post"
+      action="/admin/clientes/{{ cliente.id }}/excluir"
+      onsubmit="return confirm('Tem certeza que deseja excluir este cliente?');"
+    >
+      <button type="submit" class="btn btn-outline-danger btn-sm client-danger-btn">
+        <i class="bi bi-trash"></i> Excluir cliente
+      </button>
+    </form>
+  </div>
+
+  <form method="post" class="client-form-body" action="/admin/clientes/{{ cliente.id }}/editar" id="cliente-form" novalidate>
+    {% if erro %}
+      <div class="alert alert-danger mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ erro }}
+      </div>
+    {% endif %}
+
+    <div id="form-erro" class="alert alert-warning d-none mb-4"></div>
+
+    <div class="client-form-grid">
+      <div>
+        <label class="client-form-label">Nome do cliente</label>
+        <input
+          class="form-control client-form-control"
+          name="nome"
+          id="nome"
+          value="{{ cliente.nome or '' }}"
+          placeholder="Ex.: Maria da Silva"
+          required
+        >
+      </div>
+
+      <div>
+        <label class="client-form-label">Telefone</label>
+        <input
+          class="form-control client-form-control"
+          name="telefone"
+          id="telefone"
+          value="{{ cliente.telefone or '' }}"
+          placeholder="+55 98 9xxxx-xxxx"
+          inputmode="numeric"
+          maxlength="18"
+          required
+        >
+      </div>
+
+      <div>
+        <label class="client-form-label">CPF</label>
+        <input
+          class="form-control client-form-control"
+          name="cpf"
+          id="cpf"
+          value="{{ cliente.cpf or '' }}"
+          placeholder="000.000.000-00"
+          inputmode="numeric"
+          maxlength="14"
+        >
+      </div>
+
+      <div>
+        <label class="client-form-label">Saldo (R$)</label>
+        <input
+          class="form-control client-form-control"
+          name="saldo"
+          id="saldo"
+          value="{{ '%.2f'|format((cliente.saldo or 0)|float) }}"
+          placeholder="0,00"
+          inputmode="decimal"
+        >
+      </div>
+
+      <div class="full-width">
+        <label class="client-form-label">Endereço</label>
+        <input
+          class="form-control client-form-control"
+          name="endereco"
+          id="endereco"
+          value="{{ cliente.endereco or '' }}"
+          placeholder="Rua, número, bairro, complemento"
+        >
+      </div>
+    </div>
+
+    <div class="client-form-actions">
+      <div class="client-form-actions-left">
+        <a class="btn btn-outline-secondary" href="/admin/clientes">
+          Cancelar
+        </a>
+      </div>
+
+      <div class="client-form-actions-right">
+        <button class="btn btn-danger" type="submit">
+          <i class="bi bi-check2-circle"></i> Salvar alterações
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+  const form = document.getElementById("cliente-form");
+  const telefoneInput = document.getElementById("telefone");
+  const cpfInput = document.getElementById("cpf");
+  const saldoInput = document.getElementById("saldo");
+  const erroBox = document.getElementById("form-erro");
+  const metaTelefone = document.getElementById("client-meta-telefone");
+  const metaSaldo = document.getElementById("client-meta-saldo");
+
+  function somenteDigitos(valor) {
+    return (valor || "").replace(/\D/g, "");
+  }
+
+  function formatarTelefoneBR(valor) {
+    let digits = somenteDigitos(valor);
+
+    if (!digits) {
+      return "+55 ";
+    }
+
+    if (!digits.startsWith("55")) {
+      digits = "55" + digits.replace(/^55/, "");
+    }
+
+    digits = digits.slice(0, 13);
+
+    const cc = digits.slice(0, 2);
+    const ddd = digits.slice(2, 4);
+    const numero = digits.slice(4);
+
+    let resultado = "+" + cc;
+
+    if (ddd) {
+      resultado += " " + ddd;
+    }
+
+    if (numero.length > 0) {
+      if (numero.length <= 4) {
+        resultado += " " + numero;
+      } else if (numero.length === 8) {
+        resultado += " " + numero.slice(0, 4) + "-" + numero.slice(4);
+      } else if (numero.length === 9) {
+        resultado += " " + numero.slice(0, 5) + "-" + numero.slice(5);
+      } else {
+        resultado += " " + numero;
+      }
+    }
+
+    return resultado;
+  }
+
+  function formatarCPF(valor) {
+    let digits = somenteDigitos(valor).slice(0, 11);
+
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return digits.replace(/(\d{3})(\d+)/, "$1.$2");
+    if (digits.length <= 9) return digits.replace(/(\d{3})(\d{3})(\d+)/, "$1.$2.$3");
+
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
+  }
+
+  function cpfValido(cpf) {
+    cpf = somenteDigitos(cpf);
+
+    if (!cpf) return true;
+    if (cpf.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+    let soma = 0;
+    for (let i = 0; i < 9; i++) {
+      soma += parseInt(cpf.charAt(i), 10) * (10 - i);
+    }
+
+    let dig1 = 11 - (soma % 11);
+    if (dig1 >= 10) dig1 = 0;
+
+    soma = 0;
+    for (let i = 0; i < 10; i++) {
+      soma += parseInt(cpf.charAt(i), 10) * (11 - i);
+    }
+
+    let dig2 = 11 - (soma % 11);
+    if (dig2 >= 10) dig2 = 0;
+
+    return dig1 === parseInt(cpf.charAt(9), 10) && dig2 === parseInt(cpf.charAt(10), 10);
+  }
+
+  function telefoneBRValidoFlexivel(valor) {
+    let digits = somenteDigitos(valor);
+
+    if (!digits.startsWith("55")) {
+      return false;
+    }
+
+    if (digits.length === 13) {
+      const ddd = digits.slice(2, 4);
+      const numero = digits.slice(4);
+      return /^\d{2}$/.test(ddd) && /^\d{9}$/.test(numero) && numero.startsWith("9");
+    }
+
+    if (digits.length === 12) {
+      const ddd = digits.slice(2, 4);
+      const numero = digits.slice(4);
+      return /^\d{2}$/.test(ddd) && /^\d{8}$/.test(numero);
+    }
+
+    return false;
+  }
+
+  function normalizarSaldo(valor) {
+    if (!valor || !valor.trim()) return "0.00";
+
+    let v = valor.trim()
+      .replace("R$", "")
+      .replace(/\s/g, "");
+
+    // caso tenha vírgula, assume formato brasileiro: 1.234,56
+    if (v.includes(",")) {
+      v = v.replace(/\./g, "").replace(",", ".");
+    }
+
+    const numero = Number(v);
+
+    if (isNaN(numero)) {
+      return null;
+    }
+
+    return numero.toFixed(2);
+  }
+
+  function formatarSaldoVisual(valor) {
+    const numero = Number(valor || 0);
+    if (isNaN(numero)) return "0,00";
+    return numero.toFixed(2).replace(".", ",");
+  }
+
+  function mostrarErro(msg) {
+    erroBox.textContent = msg;
+    erroBox.classList.remove("d-none");
+  }
+
+  function limparErro() {
+    erroBox.textContent = "";
+    erroBox.classList.add("d-none");
+  }
+
+  function atualizarMetaTelefone() {
+    if (metaTelefone) {
+      const valor = telefoneInput.value.trim();
+      metaTelefone.innerHTML = `<i class="bi bi-telephone"></i> ${valor || 'Telefone não informado'}`;
+    }
+  }
+
+  function atualizarMetaSaldo() {
+    if (metaSaldo) {
+      const normalizado = normalizarSaldo(saldoInput.value);
+      const exibicao = normalizado === null ? saldoInput.value : formatarSaldoVisual(normalizado);
+      metaSaldo.innerHTML = `<i class="bi bi-cash-stack"></i> Saldo: R$ ${exibicao}`;
+    }
+  }
+
+  telefoneInput.addEventListener("input", () => {
+    telefoneInput.value = formatarTelefoneBR(telefoneInput.value);
+    atualizarMetaTelefone();
+  });
+
+  telefoneInput.addEventListener("focus", () => {
+    if (!telefoneInput.value.trim()) {
+      telefoneInput.value = "+55 ";
+      atualizarMetaTelefone();
+    }
+  });
+
+  cpfInput.addEventListener("input", () => {
+    cpfInput.value = formatarCPF(cpfInput.value);
+  });
+
+  saldoInput.addEventListener("input", () => {
+    atualizarMetaSaldo();
+  });
+
+  saldoInput.addEventListener("blur", () => {
+    const normalizado = normalizarSaldo(saldoInput.value);
+    if (normalizado !== null) {
+      saldoInput.value = formatarSaldoVisual(normalizado);
+    }
+    atualizarMetaSaldo();
+  });
+
+  form.addEventListener("submit", (e) => {
+    limparErro();
+
+    const nome = document.getElementById("nome").value.trim();
+    const telefoneValor = telefoneInput.value.trim();
+    const cpfValor = cpfInput.value.trim();
+    const saldoNormalizado = normalizarSaldo(saldoInput.value);
+
+    if (!nome) {
+      e.preventDefault();
+      mostrarErro("Informe o nome do cliente.");
+      document.getElementById("nome").focus();
+      return;
+    }
+
+    if (!telefoneBRValidoFlexivel(telefoneValor)) {
+      e.preventDefault();
+      mostrarErro("Informe um telefone válido com +55 e DDD. Pode ser com ou sem o 9º dígito.");
+      telefoneInput.focus();
+      return;
+    }
+
+    if (cpfValor && !cpfValido(cpfValor)) {
+      e.preventDefault();
+      mostrarErro("Informe um CPF válido.");
+      cpfInput.focus();
+      return;
+    }
+
+    if (saldoNormalizado === null) {
+      e.preventDefault();
+      mostrarErro("Informe um saldo válido.");
+      saldoInput.focus();
+      return;
+    }
+
+    saldoInput.value = saldoNormalizado;
+  });
+
+  window.addEventListener("load", () => {
+    if (telefoneInput.value) {
+      telefoneInput.value = formatarTelefoneBR(telefoneInput.value);
+    } else {
+      telefoneInput.value = "+55 ";
+    }
+
+    if (cpfInput.value) {
+      cpfInput.value = formatarCPF(cpfInput.value);
+    }
+
+    if (saldoInput.value) {
+      const normalizado = normalizarSaldo(saldoInput.value);
+      if (normalizado !== null) {
+        saldoInput.value = formatarSaldoVisual(normalizado);
+      }
+    } else {
+      saldoInput.value = "0,00";
+    }
+
+    atualizarMetaTelefone();
+    atualizarMetaSaldo();
+  });
+</script>
+
+{% endblock %}

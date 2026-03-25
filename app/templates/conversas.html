@@ -1,0 +1,697 @@
+  {% extends "base.html" %}
+
+  {% block title %}Conversas{% endblock %}
+  {% block page_title %}Conversas{% endblock %}
+
+  {% block content %}
+
+
+  <div class="panel-card">
+    <div class="inbox-toolbar">
+      <div class="inbox-toolbar-left">
+        <h5>Caixa de Entrada</h5>
+        <p>Priorize solicitações humanas, acompanhe conversas do bot e monitore atendimentos encerrados.</p>
+      </div>
+
+      <form id="busca-form" class="inbox-search" method="get" action="/admin/conversas">
+        <input
+          id="busca-input"
+          type="text"
+          class="form-control"
+          name="busca"
+          value="{{ busca }}"
+          placeholder="Buscar telefone"
+        >
+        <button class="btn btn-danger">Buscar</button>
+      </form>
+    </div>
+
+    <div id="conversas-content">
+      {% include "partials/conversas_lista.html" %}
+    </div>
+  </div>
+
+  <div class="broadcast-modal-backdrop" id="broadcast-backdrop"></div>
+
+  <div class="broadcast-modal" id="broadcast-modal">
+    <div class="broadcast-modal-card">
+      <div class="broadcast-modal-header">
+        <div>
+          <h4>Mensagem Geral</h4>
+          <p>Envie uma mensagem para os responsáveis de uma turma específica.</p>
+        </div>
+        <button type="button" class="broadcast-close" id="close-broadcast-modal">×</button>
+      </div>
+
+      <form method="post" action="/admin/conversas/mensagem-geral" class="broadcast-form">
+        <div class="broadcast-field">
+          <label for="turma">Turma</label>
+          <select id="turma" name="turma" class="form-select" required>
+            <option value="">Selecione uma turma</option>
+            {% for turma in turmas %}
+              <option value="{{ turma }}">{{ turma }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="broadcast-field">
+          <label for="mensagem">Mensagem</label>
+          <textarea
+            id="mensagem"
+            name="mensagem"
+            class="form-control"
+            rows="6"
+            placeholder="Digite a mensagem que será enviada para os responsáveis..."
+            required
+          ></textarea>
+        </div>
+
+        <div class="broadcast-actions">
+          <button type="button" class="btn btn-outline-secondary" id="cancel-broadcast-modal">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-send"></i>
+            Enviar mensagem
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+
+
+
+  <script>
+    let atualizandoConversas = false;
+    const STORAGE_KEY = "conversas_sections_state";
+
+    function getSectionsState() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveSectionsState(state) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function setSectionCollapsed(sectionEl, collapsed) {
+      if (!sectionEl) return;
+
+      const body = sectionEl.querySelector(".queue-body");
+      const toggleBtn = sectionEl.querySelector(".queue-toggle");
+      const toggleLabel = sectionEl.querySelector(".queue-toggle-label");
+      const toggleIcon = sectionEl.querySelector(".queue-toggle-icon");
+
+      sectionEl.classList.toggle("is-collapsed", collapsed);
+
+      if (body) {
+        body.style.display = collapsed ? "none" : "";
+      }
+
+      if (toggleBtn) {
+        toggleBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        toggleBtn.setAttribute("title", collapsed ? "Expandir seção" : "Minimizar seção");
+      }
+
+      if (toggleLabel) {
+        toggleLabel.textContent = collapsed ? "Expandir" : "Minimizar";
+      }
+
+      if (toggleIcon) {
+        toggleIcon.textContent = collapsed ? "+" : "−";
+      }
+    }
+
+    function bindConversationSectionToggles() {
+      const state = getSectionsState();
+      const sections = document.querySelectorAll(".queue-card[data-section-key]");
+
+      sections.forEach((sectionEl) => {
+        const key = sectionEl.dataset.sectionKey;
+        const toggleBtn = sectionEl.querySelector(".queue-toggle");
+
+        if (!key || !toggleBtn) return;
+
+        const collapsed = !!state[key];
+        setSectionCollapsed(sectionEl, collapsed);
+
+        if (toggleBtn.dataset.bound === "true") return;
+
+        toggleBtn.addEventListener("click", () => {
+          const currentState = getSectionsState();
+          const isCollapsed = !sectionEl.classList.contains("is-collapsed");
+
+          currentState[key] = isCollapsed;
+          saveSectionsState(currentState);
+          setSectionCollapsed(sectionEl, isCollapsed);
+        });
+
+        toggleBtn.dataset.bound = "true";
+      });
+    }
+
+    async function atualizarListaConversas() {
+      if (atualizandoConversas) return;
+      atualizandoConversas = true;
+
+      try {
+        const busca = document.getElementById("busca-input")?.value || "";
+        const url = `/admin/conversas/parcial?busca=${encodeURIComponent(busca)}`;
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "Cache-Control": "no-cache"
+          }
+        });
+
+        if (!response.ok) {
+          atualizandoConversas = false;
+          return;
+        }
+
+        const html = await response.text();
+        const container = document.getElementById("conversas-content");
+        if (!container) {
+          atualizandoConversas = false;
+          return;
+        }
+
+        container.innerHTML = html;
+        bindConversationSectionToggles();
+      } catch (error) {
+        console.error("Erro ao atualizar conversas:", error);
+      } finally {
+        atualizandoConversas = false;
+      }
+    }
+
+    function openBroadcastModal() {
+      document.getElementById("broadcast-modal")?.classList.add("is-open");
+      document.getElementById("broadcast-backdrop")?.classList.add("is-open");
+    }
+
+    function closeBroadcastModal() {
+      document.getElementById("broadcast-modal")?.classList.remove("is-open");
+      document.getElementById("broadcast-backdrop")?.classList.remove("is-open");
+    }
+
+    window.addEventListener("load", () => {
+      bindConversationSectionToggles();
+      setInterval(atualizarListaConversas, 5000);
+
+      document.getElementById("open-broadcast-modal")?.addEventListener("click", openBroadcastModal);
+      document.getElementById("close-broadcast-modal")?.addEventListener("click", closeBroadcastModal);
+      document.getElementById("cancel-broadcast-modal")?.addEventListener("click", closeBroadcastModal);
+      document.getElementById("broadcast-backdrop")?.addEventListener("click", closeBroadcastModal);
+    });
+  </script>
+
+  <style>
+    .inbox-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 22px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0.45));
+    }
+
+    .inbox-toolbar-left h5 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .inbox-toolbar-left p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .inbox-search {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      min-width: 360px;
+    }
+
+    .queue-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+      padding: 20px;
+    }
+
+    .queue-card {
+      background: rgba(255,255,255,0.72);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    .queue-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid rgba(148,163,184,0.14);
+      background: linear-gradient(180deg, rgba(248,250,252,0.8), rgba(248,250,252,0.45));
+    }
+
+    .queue-head-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .queue-head-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .queue-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+      background: #fff;
+      border: 1px solid rgba(148,163,184,0.16);
+    }
+
+    .queue-title {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .queue-subtitle {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .queue-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: #0f172a;
+      color: #fff;
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .queue-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(148,163,184,0.18);
+      background: #fff;
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .queue-toggle:hover {
+      background: #fff8f8;
+      border-color: rgba(220,38,38,0.24);
+    }
+
+    .queue-toggle-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+      background: rgba(15,23,42,0.06);
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .queue-body {
+      padding: 10px 12px 12px;
+    }
+
+    .queue-card.is-collapsed .queue-head {
+      border-bottom: none;
+    }
+
+    .conversation-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .conversation-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 16px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid rgba(148,163,184,0.14);
+      text-decoration: none;
+      color: inherit;
+      transition: 0.18s ease;
+      box-shadow: 0 8px 20px rgba(15,23,42,0.04);
+    }
+
+    .conversation-item:hover {
+      transform: translateY(-1px);
+      border-color: rgba(220,38,38,0.24);
+      box-shadow: 0 14px 26px rgba(15,23,42,0.08);
+      background: linear-gradient(180deg, #fff, #fff8f8);
+    }
+
+    .conversation-item.priority {
+      border-color: rgba(245, 158, 11, 0.30);
+      background: linear-gradient(180deg, rgba(255,251,235,1), rgba(255,255,255,1));
+    }
+
+    .conversation-main {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .conversation-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 16px;
+      flex: 0 0 50px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%);
+    }
+
+    .conversation-content {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .conversation-topline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .conversation-phone {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .conversation-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .conversation-preview {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .conversation-side {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .mini-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .conversation-time {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .conversation-open {
+      min-height: 40px;
+      padding-inline: 16px !important;
+      border-radius: 12px !important;
+      font-size: 13px;
+    }
+
+    .empty-queue {
+      padding: 22px;
+      border-radius: 18px;
+      background: rgba(248,250,252,0.7);
+      border: 1px dashed rgba(148,163,184,0.28);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status-badge-custom {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .status-badge-custom.waiting {
+      background: rgba(245, 158, 11, 0.16);
+      color: #92400e;
+    }
+
+    .status-badge-custom.human {
+      background: rgba(59, 130, 246, 0.12);
+      color: #1d4ed8;
+    }
+
+    .status-badge-custom.bot {
+      background: rgba(148, 163, 184, 0.16);
+      color: #475569;
+    }
+
+    .status-badge-custom.finished {
+      background: rgba(22, 163, 74, 0.12);
+      color: #166534;
+    }
+
+    .status-badge-custom .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+
+    .priority-flag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #92400e;
+      background: rgba(245,158,11,0.16);
+    }
+
+    .dot-live {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #22c55e;
+    }
+
+    @media (max-width: 992px) {
+      .inbox-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .inbox-search {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .queue-head {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .queue-head-right {
+        justify-content: space-between;
+      }
+
+      .conversation-item {
+        grid-template-columns: 1fr;
+      }
+
+      .conversation-side,
+      .mini-stack {
+        justify-content: flex-start;
+        align-items: flex-start;
+      }
+    }
+
+  .inbox-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .broadcast-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: 0.2s ease;
+    z-index: 999;
+  }
+
+  .broadcast-modal-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .broadcast-modal {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: 0.2s ease;
+    z-index: 1000;
+  }
+
+  .broadcast-modal.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .broadcast-modal-card {
+    width: min(100%, 620px);
+    background: #fff;
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+  }
+
+  .broadcast-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 22px 22px 14px;
+    border-bottom: 1px solid rgba(148,163,184,0.16);
+  }
+
+  .broadcast-modal-header h4 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+  }
+
+  .broadcast-modal-header p {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .broadcast-close {
+    border: none;
+    background: rgba(148,163,184,0.12);
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: 0.18s ease;
+  }
+
+  .broadcast-close:hover {
+    background: rgba(220,38,38,0.12);
+    color: #b91c1c;
+  }
+
+  .broadcast-form {
+    padding: 20px 22px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .broadcast-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .broadcast-field label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .broadcast-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 6px;
+  }
+
+  @media (max-width: 992px) {
+    .inbox-toolbar-actions {
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+    }
+  }  
+
+
+
+  </style>
+  {% endblock %}

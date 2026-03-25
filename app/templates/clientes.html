@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% block title %}Clientes{% endblock %}
+{% block page_title %}Gestão de clientes{% endblock %}
+{% block page_subtitle %}Visualize os clientes, seus dados de contato e o histórico de kits alugados.{% endblock %}
+
+{% block page_actions %}
+<div class="d-flex gap-2 flex-wrap">
+  <a href="/admin/clientes/novo" class="quick-chip">
+    <i class="bi bi-plus-lg"></i> Novo cliente
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<style>
+  .clients-page{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+
+  .clients-table-card{
+    overflow:hidden;
+  }
+
+  .clients-table-header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+
+  .clients-search-form{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 24px 20px;
+    flex-wrap:wrap;
+  }
+
+  .clients-search-form .search-input-wrap{
+    position:relative;
+    flex:1 1 320px;
+    min-width:260px;
+  }
+
+  .clients-search-form .search-input-wrap i{
+    position:absolute;
+    top:50%;
+    left:14px;
+    transform:translateY(-50%);
+    color:var(--bs-secondary-color, #6c757d);
+    font-size:0.95rem;
+    pointer-events:none;
+  }
+
+  .clients-search-form .form-control{
+    padding-left:40px;
+    min-height:46px;
+    border-radius:14px;
+  }
+
+  .clients-search-btn{
+    min-width:120px;
+    min-height:46px;
+    border-radius:14px;
+    font-weight:600;
+    padding:0 18px;
+  }
+
+  .client-name-cell{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-width:220px;
+  }
+
+  .client-avatar{
+    width:42px;
+    height:42px;
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size:0.95rem;
+    color:#fff;
+    background:linear-gradient(135deg, #dc3545, #b02a37);
+    box-shadow:0 10px 24px rgba(220, 53, 69, 0.18);
+    flex-shrink:0;
+  }
+
+  .client-name{
+    font-weight:700;
+    color:var(--bs-heading-color, #212529);
+    line-height:1.1;
+    margin-bottom:2px;
+  }
+
+  .client-subtext{
+    font-size:0.88rem;
+    color:var(--bs-secondary-color, #6c757d);
+  }
+
+  .table-strong{
+    font-weight:600;
+    color:var(--bs-heading-color, #212529);
+  }
+
+  .table-muted{
+    color:var(--bs-secondary-color, #6c757d);
+  }
+
+  .kits-wrap{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  .kit-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 12px;
+    border-radius:999px;
+    background:rgba(25, 135, 84, 0.10);
+    color:#198754;
+    font-size:0.86rem;
+    font-weight:600;
+    white-space:nowrap;
+  }
+
+  .kit-pill i{
+    font-size:0.82rem;
+  }
+
+  .clients-action-btn{
+    border-radius:12px;
+    font-weight:600;
+    padding:8px 14px;
+    white-space:nowrap;
+  }
+
+  .clients-table td,
+  .clients-table th{
+    vertical-align:middle;
+  }
+
+  .clients-table tbody tr{
+    transition:background-color .18s ease;
+  }
+
+  .clients-table tbody tr:hover{
+    background:rgba(220, 53, 69, 0.03);
+  }
+
+  .client-balance{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 12px;
+    border-radius:999px;
+    font-size:0.86rem;
+    font-weight:700;
+    white-space:nowrap;
+  }
+
+  .client-balance.is-negative{
+    background:rgba(220, 53, 69, 0.10);
+    color:#b02a37;
+  }
+
+  .client-balance.is-positive{
+    background:rgba(25, 135, 84, 0.10);
+    color:#198754;
+  }
+
+  .client-balance.is-neutral{
+    background:rgba(108, 117, 125, 0.10);
+    color:#6c757d;
+  }
+
+  .empty-state{
+    padding:40px 20px;
+    text-align:center;
+  }
+
+  .empty-state-icon{
+    width:64px;
+    height:64px;
+    border-radius:18px;
+    margin:0 auto 14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(220, 53, 69, 0.08);
+    color:#dc3545;
+    font-size:1.5rem;
+  }
+
+  .empty-state-title{
+    font-size:1.05rem;
+    font-weight:700;
+    color:var(--bs-heading-color, #212529);
+    margin-bottom:6px;
+  }
+
+  .empty-state-text{
+    color:var(--bs-secondary-color, #6c757d);
+    max-width:420px;
+    margin:0 auto;
+  }
+
+  @media (max-width: 768px){
+    .clients-search-form{
+      padding:0 16px 16px;
+    }
+
+    .client-name-cell{
+      min-width:unset;
+    }
+
+    .clients-search-btn{
+      width:100%;
+    }
+  }
+</style>
+
+<div class="clients-page">
+  <section class="panel-card students-table-card clients-table-card">
+    <div class="panel-card-header students-table-header clients-table-header">
+      <div>
+        <div class="section-eyebrow">BASE DE CLIENTES</div>
+        <p class="table-helper mb-0">
+          Relação de clientes com telefone, endereço, saldo e kits já alugados.
+        </p>
+      </div>
+    </div>
+    <br>
+    <form class="clients-search-form" method="get" action="/admin/clientes">
+      <div class="search-input-wrap">
+        <i class="bi bi-search"></i>
+        <input
+          type="text"
+          class="form-control"
+          name="busca"
+          value="{{ busca }}"
+          placeholder="Buscar por nome, telefone ou CPF"
+        >
+      </div>
+
+      <button class="btn btn-danger clients-search-btn" type="submit">
+        Buscar
+      </button>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-modern students-table clients-table align-middle">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Telefone</th>
+            <th>Endereço</th>
+            <th>Saldo</th>
+            <th>Kit(s)</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for cliente in clientes %}
+          <tr>
+            <td>
+              <div class="client-name-cell">
+                <div class="client-avatar">
+                  {{ (cliente.nome or 'C')[0] | upper }}
+                </div>
+                <div>
+                  <div class="client-name">{{ cliente.nome or 'Cliente sem nome' }}</div>
+                  <div class="client-subtext">
+                    {% if cliente.cpf %}
+                      CPF: {{ cliente.cpf }}
+                    {% else %}
+                      Cadastro de cliente
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </td>
+
+            <td>
+              <span class="table-strong">
+                {{ cliente.telefone or 'Não informado' }}
+              </span>
+            </td>
+
+            <td>
+              <span class="table-muted">
+                {{ cliente.endereco or 'Não informado' }}
+              </span>
+            </td>
+
+            <td>
+              {% set saldo = cliente.saldo if cliente.saldo is not none else 0 %}
+              <span class="client-balance {% if saldo < 0 %}is-negative{% elif saldo > 0 %}is-positive{% else %}is-neutral{% endif %}">
+                <i class="bi {% if saldo < 0 %}bi-arrow-down-circle{% elif saldo > 0 %}bi-arrow-up-circle{% else %}bi-dash-circle{% endif %}"></i>
+                R$ {{ '%.2f'|format(saldo)|replace('.', ',') }}
+              </span>
+            </td>
+
+            <td>
+              {% if cliente.kits_nomes %}
+                <div class="kits-wrap">
+                  {% for nome in cliente.kits_nomes %}
+                    <span class="kit-pill">
+                      <i class="bi bi-gift"></i>
+                      {{ nome }}
+                    </span>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <span class="table-muted">Sem histórico</span>
+              {% endif %}
+            </td>
+
+            <td class="text-end">
+              <a
+                class="btn btn-sm btn-outline-danger clients-action-btn"
+                href="/admin/clientes/{{ cliente.id }}/editar"
+              >
+                <i class="bi bi-pencil-square"></i> Editar cadastro
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <i class="bi bi-people"></i>
+                </div>
+                <div class="empty-state-title">Nenhum cliente encontrado</div>
+                <div class="empty-state-text">
+                  Não há registros compatíveis com a busca realizada no momento.
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+{% endblock %}

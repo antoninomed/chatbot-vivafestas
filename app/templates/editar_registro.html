@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% block title %}Editar registro de aluguel{% endblock %}
+{% block page_title %}Editar registro de aluguel{% endblock %}
+{% block page_subtitle %}Atualize os dados da locação, pagamento, entrega e devolução.{% endblock %}
+
+{% block page_actions %}
+<a href="/admin/registros-alugueis" class="quick-chip">
+  <i class="bi bi-arrow-left"></i> Voltar
+</a>
+{% endblock %}
+
+{% block content %}
+
+<style>
+  .rental-form-page{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+
+  .rental-form-card{
+    max-width:980px;
+    margin:0 auto;
+    overflow:hidden;
+  }
+
+  .rental-form-header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+
+  .rental-form-body{
+    padding:24px;
+  }
+
+  .rental-form-grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:16px;
+  }
+
+  .rental-form-grid .full-width{
+    grid-column:1 / -1;
+  }
+
+  .form-label-strong{
+    font-weight:600;
+    margin-bottom:8px;
+    color:var(--bs-heading-color, #212529);
+  }
+
+  .rental-form-control{
+    min-height:48px;
+    border-radius:14px;
+  }
+
+  textarea.rental-form-control{
+    min-height:120px;
+    resize:vertical;
+  }
+
+  .rental-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:10px;
+  }
+
+  .rental-meta-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 12px;
+    border-radius:999px;
+    background:rgba(108, 117, 125, 0.10);
+    color:var(--bs-secondary-color, #6c757d);
+    font-size:.86rem;
+    font-weight:600;
+  }
+
+  .rental-form-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:24px;
+    padding-top:20px;
+    border-top:1px solid rgba(0,0,0,.06);
+  }
+
+  .rental-form-actions-left,
+  .rental-form-actions-right{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .info-helper{
+    font-size:.88rem;
+    color:var(--bs-secondary-color, #6c757d);
+    margin-top:6px;
+  }
+
+  .danger-btn{
+    border-radius:12px;
+    font-weight:600;
+  }
+
+  @media (max-width: 768px){
+    .rental-form-body{
+      padding:16px;
+    }
+
+    .rental-form-grid{
+      grid-template-columns:1fr;
+    }
+
+    .rental-form-actions{
+      flex-direction:column-reverse;
+      align-items:stretch;
+    }
+
+    .rental-form-actions-left,
+    .rental-form-actions-right{
+      width:100%;
+    }
+
+    .rental-form-actions .btn{
+      width:100%;
+    }
+  }
+</style>
+
+<div class="rental-form-page">
+  <section class="panel-card rental-form-card">
+    <div class="panel-card-header rental-form-header">
+      <div>
+        <div class="section-eyebrow">EDIÇÃO DE LOCAÇÃO</div>
+        <p class="table-helper mb-0">
+          Atualize as informações do registro de aluguel.
+        </p>
+
+        <div class="rental-meta">
+          <span class="rental-meta-pill">
+            <i class="bi bi-person"></i>
+            {{ registro.cliente.nome if registro.cliente else 'Cliente não informado' }}
+          </span>
+          <span class="rental-meta-pill">
+            <i class="bi bi-gift"></i>
+            {{ registro.kit.nome_kit if registro.kit else 'Kit não informado' }}
+          </span>
+          <span class="rental-meta-pill">
+            <i class="bi bi-hash"></i>
+            {{ registro.kit.codigo_kit if registro.kit and registro.kit.codigo_kit else 'Sem código' }}
+          </span>
+        </div>
+      </div>
+
+      <form
+        method="post"
+        action="/admin/registros-alugueis/{{ registro.id }}/excluir"
+        onsubmit="return confirm('Tem certeza que deseja excluir este registro de aluguel?');"
+      >
+        <button type="submit" class="btn btn-outline-danger btn-sm danger-btn">
+          <i class="bi bi-trash"></i> Excluir registro
+        </button>
+      </form>
+    </div>
+
+    <form method="post" class="rental-form-body" action="/admin/registros-alugueis/{{ registro.id }}/editar">
+      {% if erro %}
+        <div class="alert alert-danger mb-4" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ erro }}
+        </div>
+      {% endif %}
+
+      <div class="rental-form-grid">
+        <div>
+          <label class="form-label form-label-strong">Cliente</label>
+          <select name="cliente_id" class="form-select rental-form-control" required>
+            <option value="">Selecione um cliente</option>
+            {% for cliente in clientes %}
+              <option value="{{ cliente.id }}"
+                {% if registro.cliente_id|string == cliente.id|string %}selected{% endif %}>
+                {{ cliente.nome }}{% if cliente.telefone %} — {{ cliente.telefone }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label form-label-strong">Kit</label>
+          <select name="kit_id" class="form-select rental-form-control" required>
+            <option value="">Selecione um kit</option>
+            {% for kit in kits %}
+              <option value="{{ kit.id }}"
+                {% if registro.kit_id|string == kit.id|string %}selected{% endif %}>
+                {{ kit.nome_kit }}{% if kit.codigo_kit %} — {{ kit.codigo_kit }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label form-label-strong">Início da reserva</label>
+          <input
+            type="datetime-local"
+            name="reserva_inicio"
+            class="form-control rental-form-control"
+            value="{{ reserva_inicio_valor or '' }}"
+            required
+          >
+          <div class="info-helper">
+            Data e hora em que o kit começou ou começará a ficar reservado.
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label form-label-strong">Fim da reserva / devolução prevista</label>
+          <input
+            type="datetime-local"
+            name="reserva_fim"
+            class="form-control rental-form-control"
+            value="{{ reserva_fim_valor or '' }}"
+            required
+          >
+          <div class="info-helper">
+            Data e hora limite previstas para devolução.
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label form-label-strong">Valor cobrado</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            name="valor_cobrado"
+            class="form-control rental-form-control"
+            placeholder="0,00"
+            value="{{ registro.valor_cobrado if registro.valor_cobrado is not none else '' }}"
+          >
+        </div>
+
+        <div>
+          <label class="form-label form-label-strong">Valor pago</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            name="valor_pago"
+            class="form-control rental-form-control"
+            placeholder="0,00"
+            value="{{ registro.valor_pago if registro.valor_pago is not none else '' }}"
+          >
+        </div>
+
+        <div>
+          <label class="form-label form-label-strong">Status do pagamento</label>
+          <select name="pagamento_status" class="form-select rental-form-control">
+            <option value="">Selecione</option>
+            <option value="pendente" {% if registro.pagamento_status == 'pendente' %}selected{% endif %}>Pendente</option>
+            <option value="parcial" {% if registro.pagamento_status == 'parcial' %}selected{% endif %}>Parcial</option>
+            <option value="pago" {% if registro.pagamento_status == 'pago' %}selected{% endif %}>Pago</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label form-label-strong">Método de pagamento</label>
+          <select name="pagamento_metodo" class="form-select rental-form-control">
+            <option value="">Selecione</option>
+            <option value="pix" {% if registro.pagamento_metodo == 'pix' %}selected{% endif %}>Pix</option>
+            <option value="dinheiro" {% if registro.pagamento_metodo == 'dinheiro' %}selected{% endif %}>Dinheiro</option>
+            <option value="cartao" {% if registro.pagamento_metodo == 'cartao' %}selected{% endif %}>Cartão</option>
+            <option value="transferencia" {% if registro.pagamento_metodo == 'transferencia' %}selected{% endif %}>Transferência</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label form-label-strong">Condição de entrega</label>
+          <input
+            type="text"
+            name="condicao_entrega"
+            class="form-control rental-form-control"
+            placeholder="Ex.: entregue completo"
+            value="{{ registro.condicao_entrega or '' }}"
+          >
+        </div>
+
+        <div>
+          <label class="form-label form-label-strong">Condição de recebimento</label>
+          <input
+            type="text"
+            name="condicao_recebimento"
+            class="form-control rental-form-control"
+            placeholder="Ex.: devolvido com avaria"
+            value="{{ registro.condicao_recebimento or '' }}"
+          >
+        </div>
+
+        <div>
+          <label class="form-label form-label-strong">Status do aluguel</label>
+          <select name="status" class="form-select rental-form-control">
+            <option value="reservado" {% if registro.status == 'reservado' %}selected{% endif %}>Reservado</option>
+            <option value="entregue" {% if registro.status == 'entregue' %}selected{% endif %}>Entregue</option>
+            <option value="devolucao_atrasada" {% if registro.status == 'devolucao_atrasada' %}selected{% endif %}>Devolução atrasada</option>
+            <option value="finalizado" {% if registro.status == 'finalizado' %}selected{% endif %}>Finalizado</option>
+            <option value="cancelado" {% if registro.status == 'cancelado' %}selected{% endif %}>Cancelado</option>
+          </select>
+        </div>
+
+        <div class="full-width">
+          <label class="form-label form-label-strong">Observações</label>
+          <textarea
+            name="observacoes"
+            class="form-control rental-form-control"
+            placeholder="Informações adicionais sobre a locação"
+          >{{ registro.observacoes or '' }}</textarea>
+          <div class="info-helper">
+            Registre detalhes sobre devolução, avarias, montagem, pagamento ou pendências.
+          </div>
+        </div>
+      </div>
+
+      <div class="rental-form-actions">
+        <div class="rental-form-actions-left">
+          <a href="/admin/registros-alugueis" class="btn btn-outline-secondary">
+            Cancelar
+          </a>
+        </div>
+
+        <div class="rental-form-actions-right">
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-check2-circle"></i> Salvar alterações
+          </button>
+        </div>
+      </div>
+    </form>
+  </section>
+</div>
+
+{% endblock %}

@@ -1,0 +1,323 @@
+{% set aguardando = conversas | selectattr("status_atendimento", "equalto", "aguardando") | list %}
+{% set finalizadas = conversas | selectattr("status_atendimento", "equalto", "finalizado") | list %}
+{% set em_andamento = conversas
+  | rejectattr("status_atendimento", "equalto", "aguardando")
+  | rejectattr("status_atendimento", "equalto", "finalizado")
+  | list %}
+
+<div class="queue-grid">
+
+  <!-- AGUARDANDO -->
+  <div class="queue-card" data-section-key="aguardando">
+    <div class="queue-head">
+      <div class="queue-head-left">
+        <div class="queue-icon">!</div>
+        <div>
+          <h6 class="queue-title">Aguardando Atendimento</h6>
+          <p class="queue-subtitle">Conversas que precisam de ação humana primeiro.</p>
+        </div>
+      </div>
+
+      <div class="queue-head-right">
+        <span class="queue-count">{{ aguardando|length }}</span>
+        <button type="button" class="queue-toggle" aria-expanded="true" title="Minimizar seção">
+          <span class="queue-toggle-icon">−</span>
+          <span class="queue-toggle-label">Minimizar</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="queue-body">
+      {% if aguardando %}
+        <div class="conversation-list">
+          {% for conversa in aguardando %}
+            <div class="conversation-item priority">
+              <div class="conversation-main">
+                <div class="conversation-avatar">
+                  {% if conversa.nome_cliente %}
+                    {{ conversa.nome_exibicao[:1] | upper }}
+                  {% else %}
+                    {{ conversa.telefone_usuario[-2:] if conversa.telefone_usuario else "AT" }}
+                  {% endif %}
+                </div>
+
+                <div class="conversation-content">
+                  <div class="conversation-topline">
+                    <div class="conversation-phone">{{ conversa.nome_exibicao }}</div>
+
+                    {% if conversa.nome_cliente %}
+                      <div class="conversation-preview">{{ conversa.telefone_usuario }}</div>
+                    {% endif %}
+
+                    <div class="status-badge-custom waiting">
+                      <span class="badge-dot"></span>
+                      aguardando
+                    </div>
+                  </div>
+
+                  <div class="conversation-meta">
+                    {% if conversa.kits_nomes %}
+                      <div class="d-flex flex-wrap gap-2">
+                        {% for nome_kit in conversa.kits_nomes %}
+                          <span class="status-pill is-success">
+                            <i class="bi bi-gift"></i>
+                            {{ nome_kit }}
+                          </span>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      <div class="conversation-preview">
+                        Conversa aguardando atendimento humano.
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="conversation-side">
+                <div class="mini-stack">
+                  <div class="conversation-time">
+                    {{ conversa.ultima_data.strftime('%d/%m/%Y %H:%M') if conversa.ultima_data else "" }}
+                  </div>
+
+                  <div class="conversation-actions">
+                    <a href="/admin/conversas/{{ conversa.telefone_usuario }}" class="btn btn-danger conversation-open">
+                      Abrir
+                    </a>
+
+                    <form
+                      method="post"
+                      action="/admin/conversas/{{ conversa.telefone_usuario }}/apagar"
+                      onsubmit="return confirm('Tem certeza que deseja excluir esta conversa?');"
+                      class="conversation-delete-form"
+                    >
+                      <button type="submit" class="btn btn-danger conversation-open">
+                        Excluir
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-queue">
+          Nenhuma conversa aguardando atendimento no momento.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- EM ANDAMENTO -->
+  <div class="queue-card" data-section-key="andamento">
+    <div class="queue-head">
+      <div class="queue-head-left">
+        <div class="queue-icon">B</div>
+        <div>
+          <h6 class="queue-title">Conversando com o Bot / Em atendimento</h6>
+          <p class="queue-subtitle">Conversas em andamento com automação ou atendimento ativo.</p>
+        </div>
+      </div>
+
+      <div class="queue-head-right">
+        <span class="queue-count">{{ em_andamento|length }}</span>
+        <button type="button" class="queue-toggle" aria-expanded="true" title="Minimizar seção">
+          <span class="queue-toggle-icon">−</span>
+          <span class="queue-toggle-label">Minimizar</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="queue-body">
+      {% if em_andamento %}
+        <div class="conversation-list">
+          {% for conversa in em_andamento %}
+            <div class="conversation-item">
+              <div class="conversation-main">
+                <div class="conversation-avatar">
+                  {% if conversa.nome_cliente %}
+                    {{ conversa.nome_exibicao[:1] | upper }}
+                  {% else %}
+                    {{ conversa.telefone_usuario[-2:] if conversa.telefone_usuario else "BT" }}
+                  {% endif %}
+                </div>
+
+                <div class="conversation-content">
+                  <div class="conversation-topline">
+                    <div class="conversation-phone">{{ conversa.nome_exibicao }}</div>
+
+                    {% if conversa.nome_cliente %}
+                      <div class="conversation-preview">{{ conversa.telefone_usuario }}</div>
+                    {% endif %}
+
+                    {% if conversa.atendimento_humano %}
+                      <div class="status-badge-custom human">
+                        <span class="badge-dot"></span>
+                        humano
+                      </div>
+                    {% else %}
+                      <div class="status-badge-custom bot">
+                        <span class="badge-dot"></span>
+                        bot
+                      </div>
+                    {% endif %}
+                  </div>
+
+                  <div class="conversation-meta">
+                    {% if conversa.kits_nomes %}
+                      <div class="d-flex flex-wrap gap-2">
+                        {% for nome_kit in conversa.kits_nomes %}
+                          <span class="status-pill is-success">
+                            <i class="bi bi-gift"></i>
+                            {{ nome_kit }}
+                          </span>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      <div class="conversation-preview">
+                        Conversa ativa no fluxo do bot ou em acompanhamento operacional.
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="conversation-side">
+                <div class="mini-stack">
+                  <div class="conversation-time">
+                    {{ conversa.ultima_data.strftime('%d/%m/%Y %H:%M') if conversa.ultima_data else "" }}
+                  </div>
+
+                  <div class="conversation-actions">
+                    <a href="/admin/conversas/{{ conversa.telefone_usuario }}" class="btn btn-danger conversation-open">
+                      Abrir
+                    </a>
+
+                    <form
+                      method="post"
+                      action="/admin/conversas/{{ conversa.telefone_usuario }}/apagar"
+                      onsubmit="return confirm('Tem certeza que deseja excluir esta conversa?');"
+                      class="conversation-delete-form"
+                    >
+                      <button type="submit" class="btn btn-danger conversation-open">
+                        Excluir
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-queue">
+          Nenhuma conversa em andamento no momento.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- FINALIZADAS -->
+  <div class="queue-card" data-section-key="finalizadas">
+    <div class="queue-head">
+      <div class="queue-head-left">
+        <div class="queue-icon">✓</div>
+        <div>
+          <h6 class="queue-title">Finalizadas</h6>
+          <p class="queue-subtitle">Conversas encerradas e já resolvidas.</p>
+        </div>
+      </div>
+
+      <div class="queue-head-right">
+        <span class="queue-count">{{ finalizadas|length }}</span>
+        <button type="button" class="queue-toggle" aria-expanded="true" title="Minimizar seção">
+          <span class="queue-toggle-icon">−</span>
+          <span class="queue-toggle-label">Minimizar</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="queue-body">
+      {% if finalizadas %}
+        <div class="conversation-list">
+          {% for conversa in finalizadas %}
+            <div class="conversation-item">
+              <div class="conversation-main">
+                <div class="conversation-avatar">
+                  {% if conversa.nome_cliente %}
+                    {{ conversa.nome_exibicao[:1] | upper }}
+                  {% else %}
+                    {{ conversa.telefone_usuario[-2:] if conversa.telefone_usuario else "FN" }}
+                  {% endif %}
+                </div>
+
+                <div class="conversation-content">
+                  <div class="conversation-topline">
+                    <div class="conversation-phone">{{ conversa.nome_exibicao }}</div>
+
+                    {% if conversa.nome_cliente %}
+                      <div class="conversation-preview">{{ conversa.telefone_usuario }}</div>
+                    {% endif %}
+
+                    <div class="status-badge-custom finished">
+                      <span class="badge-dot"></span>
+                      finalizado
+                    </div>
+                  </div>
+
+                  <div class="conversation-meta">
+                    {% if conversa.kits_nomes %}
+                      <div class="d-flex flex-wrap gap-2">
+                        {% for nome_kit in conversa.kits_nomes %}
+                          <span class="status-pill is-success">
+                            <i class="bi bi-gift"></i>
+                            {{ nome_kit }}
+                          </span>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      <div class="conversation-preview">
+                        Conversa encerrada. Nova mensagem reabre o fluxo.
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="conversation-side">
+                <div class="mini-stack">
+                  <div class="conversation-time">
+                    {{ conversa.ultima_data.strftime('%d/%m/%Y %H:%M') if conversa.ultima_data else "" }}
+                  </div>
+
+                  <div class="conversation-actions">
+                    <a href="/admin/conversas/{{ conversa.telefone_usuario }}" class="btn btn-danger conversation-open">
+                      Abrir
+                    </a>
+
+                    <form
+                      method="post"
+                      action="/admin/conversas/{{ conversa.telefone_usuario }}/apagar"
+                      onsubmit="return confirm('Tem certeza que deseja excluir esta conversa?');"
+                      class="conversation-delete-form"
+                    >
+                      <button type="submit" class="btn btn-danger conversation-open">
+                        Excluir
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-queue">
+          Nenhuma conversa finalizada no momento.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>

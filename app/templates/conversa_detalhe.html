@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+{% block title %}Conversa{% endblock %}
+
+{% block content %}
+
+<style>
+.topbar {
+  display: none;
+}
+
+.main-content {
+  padding-top: 10px;
+}
+
+.chat-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.chat-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.chat-contact-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.chat-contact-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.chat-contact-phone {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.1;
+}
+
+.chat-contact-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chat-save-contact-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(220, 38, 38, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+  color: #c0392b;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chat-save-contact-btn:hover {
+  background: #ffffff;
+  color: #a93226;
+  border-color: rgba(220, 38, 38, 0.28);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
+}
+
+.chat-save-contact-btn:active {
+  transform: translateY(0);
+}
+
+.chat-save-contact-btn i {
+  font-size: 14px;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .chat-topbar {
+    align-items: stretch;
+  }
+
+  .chat-contact-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+</style>
+
+<div class="chat-topbar sticky-back">
+  <div class="chat-topbar-left">
+    <a href="/admin/conversas" class="chat-back-link">
+      <span class="chat-back-arrow">←</span>
+      <span>Voltar para conversas</span>
+    </a>
+
+  </div>
+
+  <div class="chat-contact-actions">
+    {% if not cliente_existe %}
+      <a
+        href="/admin/clientes/novo?telefone={{ telefone }}"
+        class="chat-save-contact-btn"
+      >
+        <i class="bi bi-person-plus"></i>
+        Salvar cliente
+      </a>
+    {% endif %}
+
+    <form method="post" action="/admin/conversas/{{ telefone }}/encerrar" style="margin:0;">
+      <button type="submit" class="chat-close-link">
+        <span class="chat-close-icon">×</span>
+        <span>Encerrar atendimento</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="chat-wrapper chat-wrapper-conversation">
+  <div id="chat-content" class="chat-content-area">
+    {% include "partials/conversa_mensagens.html" %}
+  </div>
+
+  <div class="chat-reply-box">
+    <form id="chat-reply-form" method="post" action="/admin/conversas/{{ telefone }}/responder" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Responder</label>
+
+        <div class="chat-compose">
+          <div class="chat-compose-actions">
+            <label for="arquivo-input" class="chat-attach-btn" title="Anexar arquivo">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M21.44 11.05l-8.49 8.49a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 115.66 5.66l-9.2 9.19a2 2 0 11-2.82-2.83l8.48-8.48"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </label>
+
+            <button
+              id="chat-send-button"
+              type="submit"
+              class="chat-send-icon-btn"
+              title="Enviar mensagem"
+              aria-label="Enviar mensagem"
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M22 2L11 13"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M22 2L15 22L11 13L2 9L22 2Z"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <textarea
+            name="mensagem"
+            class="form-control chat-message-textarea"
+            rows="3"
+            placeholder="Digite a resposta..."
+          ></textarea>
+        </div>
+
+        <input
+          id="arquivo-input"
+          type="file"
+          name="arquivos"
+          class="chat-file-input-hidden"
+          accept="image/*,application/pdf,audio/*,video/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+          multiple
+        >
+
+        <div id="arquivo-nome" class="chat-file-name"></div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  let ultimaQuantidade = 0;
+  let atualizando = false;
+  let enviandoMensagem = false;
+
+  function getChatBody() {
+    return document.getElementById("chat-body");
+  }
+
+  function contarMensagensNoElemento(el) {
+    if (!el) return 0;
+    return el.querySelectorAll(".chat-row").length;
+  }
+
+  function contarMensagens() {
+    return contarMensagensNoElemento(getChatBody());
+  }
+
+  function distanciaDoFim(el) {
+    if (!el) return 0;
+    return el.scrollHeight - el.scrollTop - el.clientHeight;
+  }
+
+  function estaPertoDoFim(el) {
+    return distanciaDoFim(el) < 120;
+  }
+
+  function irParaUltimaMensagem() {
+    const chatBody = getChatBody();
+    if (!chatBody) return;
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+
+  function restaurarPosicaoOuIrProFim(deveIrProFim, distanciaAnterior) {
+    const chatBody = getChatBody();
+    if (!chatBody) return;
+
+    requestAnimationFrame(() => {
+      if (deveIrProFim) {
+        chatBody.scrollTop = chatBody.scrollHeight;
+      } else {
+        chatBody.scrollTop = Math.max(
+          0,
+          chatBody.scrollHeight - chatBody.clientHeight - distanciaAnterior
+        );
+      }
+    });
+  }
+
+  async function atualizarMensagens(forcarIrProFim = false) {
+    if (atualizando) return;
+    atualizando = true;
+
+    try {
+      const chatAtual = getChatBody();
+      const distanciaAnterior = distanciaDoFim(chatAtual);
+      const deveIrProFim = forcarIrProFim || estaPertoDoFim(chatAtual);
+
+      const response = await fetch("/admin/conversas/{{ telefone }}/mensagens", {
+        method: "GET",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          "Cache-Control": "no-cache"
+        }
+      });
+
+      if (!response.ok) return;
+
+      const html = await response.text();
+      const temp = document.createElement("div");
+      temp.innerHTML = html;
+
+      const novoChatBody = temp.querySelector("#chat-body");
+      if (!novoChatBody) return;
+
+      const novaQuantidade = contarMensagensNoElemento(novoChatBody);
+      const container = document.getElementById("chat-content");
+      if (!container) return;
+
+      if (novaQuantidade > ultimaQuantidade && document.hidden) {
+        document.title = "Nova mensagem • Conversa";
+      }
+
+      container.innerHTML = html;
+      ultimaQuantidade = novaQuantidade;
+
+      restaurarPosicaoOuIrProFim(deveIrProFim, distanciaAnterior);
+    } catch (error) {
+      console.error("Erro ao atualizar mensagens:", error);
+    } finally {
+      atualizando = false;
+    }
+  }
+
+  function iniciarArquivoAnexo() {
+    const input = document.getElementById("arquivo-input");
+    const nomeArquivo = document.getElementById("arquivo-nome");
+
+    if (!input || !nomeArquivo) return;
+
+    input.addEventListener("change", () => {
+      const arquivos = Array.from(input.files || []);
+
+      if (arquivos.length === 0) {
+        nomeArquivo.textContent = "";
+        nomeArquivo.classList.remove("has-file");
+        return;
+      }
+
+      if (arquivos.length === 1) {
+        nomeArquivo.textContent = `Arquivo selecionado: ${arquivos[0].name}`;
+      } else {
+        const nomes = arquivos.map((arquivo) => arquivo.name).join(", ");
+        nomeArquivo.textContent = `${arquivos.length} arquivos selecionados: ${nomes}`;
+      }
+
+      nomeArquivo.classList.add("has-file");
+    });
+  }
+
+  function limparFormularioResposta() {
+    const form = document.getElementById("chat-reply-form");
+    const textarea = document.querySelector(".chat-message-textarea");
+    const nomeArquivo = document.getElementById("arquivo-nome");
+
+    if (form) form.reset();
+
+    if (textarea) {
+      textarea.value = "";
+      textarea.style.height = "auto";
+    }
+
+    if (nomeArquivo) {
+      nomeArquivo.textContent = "";
+      nomeArquivo.classList.remove("has-file");
+    }
+  }
+
+  function controlarEstadoEnvio(ativo) {
+    const botaoEnviar = document.getElementById("chat-send-button");
+    const botaoFechar = document.getElementById("chat-close-button");
+    const textarea = document.querySelector(".chat-message-textarea");
+    const arquivo = document.getElementById("arquivo-input");
+
+    enviandoMensagem = ativo;
+
+    if (botaoEnviar) {
+      botaoEnviar.disabled = ativo;
+      botaoEnviar.style.opacity = ativo ? "0.72" : "1";
+    }
+
+    if (botaoFechar) {
+      botaoFechar.disabled = ativo;
+    }
+
+    if (textarea) textarea.disabled = ativo;
+    if (arquivo) arquivo.disabled = ativo;
+  }
+
+  async function enviarFormularioAssincrono(form, formDataExtra = null) {
+    if (enviandoMensagem) return;
+
+    const formData = formDataExtra || new FormData(form);
+    const acao = formData.get("acao");
+    const mensagem = (formData.get("mensagem") || "").toString().trim();
+    const arquivos = formData.getAll("arquivos");
+
+    if (acao !== "finalizar") {
+      const temArquivo = arquivos.some((arquivo) => arquivo instanceof File && arquivo.size > 0);
+      if (!mensagem && !temArquivo) return;
+    }
+
+    controlarEstadoEnvio(true);
+
+    try {
+      const response = await fetch(form.action, {
+        method: "POST",
+        body: formData,
+        headers: {
+          "X-Requested-With": "XMLHttpRequest"
+        }
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+
+      if (!response.ok) {
+        let erro = "Erro ao enviar mensagem.";
+        if (contentType.includes("application/json")) {
+          const data = await response.json();
+          if (data.error) erro = data.error;
+        }
+        throw new Error(erro);
+      }
+
+      if (contentType.includes("application/json")) {
+        const data = await response.json();
+
+        if (!data.ok) {
+          throw new Error(data.error || "Falha ao processar a ação.");
+        }
+
+        if (data.finalizado) {
+          window.location.href = data.redirect_url || "/admin/conversas";
+          return;
+        }
+      }
+
+      limparFormularioResposta();
+      await atualizarMensagens(true);
+      irParaUltimaMensagem();
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Não foi possível enviar a mensagem.");
+    } finally {
+      controlarEstadoEnvio(false);
+    }
+  }
+
+  function iniciarSubmitAssincrono() {
+    const form = document.getElementById("chat-reply-form");
+    if (!form) return;
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await enviarFormularioAssincrono(form);
+    });
+  }
+
+  function iniciarBotaoEncerrar() {
+    const botaoFechar = document.getElementById("chat-close-button");
+    const form = document.getElementById("chat-reply-form");
+    if (!botaoFechar || !form) return;
+
+    botaoFechar.addEventListener("click", async () => {
+      const confirmar = window.confirm("Deseja realmente encerrar este atendimento?");
+      if (!confirmar) return;
+
+      const formData = new FormData(form);
+      formData.set("acao", "finalizar");
+
+      await enviarFormularioAssincrono(form, formData);
+    });
+  }
+
+  function iniciarTextareaAutoResize() {
+    const textarea = document.querySelector(".chat-message-textarea");
+    if (!textarea) return;
+
+    const ajustarAltura = () => {
+      textarea.style.height = "auto";
+      textarea.style.height = Math.min(textarea.scrollHeight, 140) + "px";
+    };
+
+    textarea.addEventListener("input", ajustarAltura);
+    ajustarAltura();
+  }
+
+  function ativarEnvioPorEnter() {
+    const textarea = document.querySelector(".chat-message-textarea");
+    const form = textarea ? textarea.closest("form") : null;
+
+    if (!textarea || !form) return;
+
+    textarea.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+
+        const texto = textarea.value.trim();
+        const arquivo = document.getElementById("arquivo-input");
+
+        if (texto.length === 0 && (!arquivo || !arquivo.files || arquivo.files.length === 0)) {
+          return;
+        }
+
+        form.requestSubmit();
+      }
+    });
+  }
+
+  window.addEventListener("load", () => {
+    ultimaQuantidade = contarMensagens();
+
+    requestAnimationFrame(() => {
+      irParaUltimaMensagem();
+    });
+
+    iniciarArquivoAnexo();
+    iniciarTextareaAutoResize();
+    ativarEnvioPorEnter();
+    iniciarSubmitAssincrono();
+    iniciarBotaoEncerrar();
+
+    setInterval(() => {
+      if (!enviandoMensagem) {
+        atualizarMensagens();
+      }
+    }, 3000);
+  });
+
+  window.addEventListener("focus", () => {
+    document.title = "Conversa";
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      document.title = "Conversa";
+    }
+  });
+</script>
+
+{% endblock %}

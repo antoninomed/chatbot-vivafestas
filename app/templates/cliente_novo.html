@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}Novo cliente{% endblock %}
+{% block page_title %}Novo cliente{% endblock %}
+{% block page_subtitle %}Cadastre um novo cliente para vincular conversas e aluguéis.{% endblock %}
+
+{% block content %}
+<div class="panel-card narrow-card">
+  <div class="panel-card-header">
+    <h5 class="mb-0">Adicionar cliente</h5>
+  </div>
+
+  <form method="post" class="p-4" id="cliente-form" novalidate>
+    {% if erro %}
+      <div class="alert alert-warning">{{ erro }}</div>
+    {% endif %}
+
+    <div id="form-erro" class="alert alert-warning d-none"></div>
+
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Nome</label>
+        <input
+          class="form-control"
+          name="nome"
+          id="nome"
+          required
+          maxlength="120"
+          placeholder="Nome do cliente"
+        >
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Telefone</label>
+        <input
+          class="form-control"
+          name="telefone"
+          id="telefone"
+          required
+          inputmode="numeric"
+          maxlength="18"
+          placeholder="+55 98 9xxxx-xxxx"
+          value="+55 "
+        >
+        <div class="form-text">
+          Aceita número com ou sem o 9º dígito após o DDD.
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">CPF</label>
+        <input
+          class="form-control"
+          name="cpf"
+          id="cpf"
+          inputmode="numeric"
+          maxlength="14"
+          placeholder="000.000.000-00"
+        >
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Endereço</label>
+        <input
+          class="form-control"
+          name="endereco"
+          id="endereco"
+          maxlength="255"
+          placeholder="Endereço do cliente"
+        >
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mt-4">
+      <a href="/admin/clientes" class="btn btn-outline-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-danger">Salvar cliente</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const form = document.getElementById("cliente-form");
+  const telefoneInput = document.getElementById("telefone");
+  const cpfInput = document.getElementById("cpf");
+  const erroBox = document.getElementById("form-erro");
+
+  function somenteDigitos(valor) {
+    return (valor || "").replace(/\D/g, "");
+  }
+
+  function formatarTelefoneBR(valor) {
+    let digits = somenteDigitos(valor);
+
+    if (!digits) {
+      return "+55 ";
+    }
+
+    if (!digits.startsWith("55")) {
+      digits = "55" + digits.replace(/^55/, "");
+    }
+
+    digits = digits.slice(0, 13);
+
+    const cc = digits.slice(0, 2);
+    const ddd = digits.slice(2, 4);
+    const numero = digits.slice(4);
+
+    let resultado = "+" + cc;
+
+    if (ddd) {
+      resultado += " " + ddd;
+    }
+
+    if (numero.length > 0) {
+      if (numero.length <= 4) {
+        resultado += " " + numero;
+      } else if (numero.length === 8) {
+        resultado += " " + numero.slice(0, 4) + "-" + numero.slice(4);
+      } else if (numero.length === 9) {
+        resultado += " " + numero.slice(0, 5) + "-" + numero.slice(5);
+      } else {
+        resultado += " " + numero;
+      }
+    }
+
+    return resultado;
+  }
+
+  function formatarCPF(valor) {
+    let digits = somenteDigitos(valor).slice(0, 11);
+
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return digits.replace(/(\d{3})(\d+)/, "$1.$2");
+    if (digits.length <= 9) return digits.replace(/(\d{3})(\d{3})(\d+)/, "$1.$2.$3");
+
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
+  }
+
+  function cpfValido(cpf) {
+    cpf = somenteDigitos(cpf);
+
+    if (!cpf) return true;
+    if (cpf.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+    let soma = 0;
+    for (let i = 0; i < 9; i++) {
+      soma += parseInt(cpf.charAt(i), 10) * (10 - i);
+    }
+
+    let dig1 = 11 - (soma % 11);
+    if (dig1 >= 10) dig1 = 0;
+
+    soma = 0;
+    for (let i = 0; i < 10; i++) {
+      soma += parseInt(cpf.charAt(i), 10) * (11 - i);
+    }
+
+    let dig2 = 11 - (soma % 11);
+    if (dig2 >= 10) dig2 = 0;
+
+    return dig1 === parseInt(cpf.charAt(9), 10) && dig2 === parseInt(cpf.charAt(10), 10);
+  }
+
+  function telefoneBRValidoFlexivel(valor) {
+    let digits = somenteDigitos(valor);
+
+    if (!digits.startsWith("55")) {
+      return false;
+    }
+
+    if (digits.length === 13) {
+      const ddd = digits.slice(2, 4);
+      const numero = digits.slice(4);
+      return /^\d{2}$/.test(ddd) && /^\d{9}$/.test(numero) && numero.startsWith("9");
+    }
+
+    if (digits.length === 12) {
+      const ddd = digits.slice(2, 4);
+      const numero = digits.slice(4);
+      return /^\d{2}$/.test(ddd) && /^\d{8}$/.test(numero);
+    }
+
+    return false;
+  }
+
+  function mostrarErro(msg) {
+    erroBox.textContent = msg;
+    erroBox.classList.remove("d-none");
+  }
+
+  function limparErro() {
+    erroBox.textContent = "";
+    erroBox.classList.add("d-none");
+  }
+
+  telefoneInput.addEventListener("input", () => {
+    telefoneInput.value = formatarTelefoneBR(telefoneInput.value);
+  });
+
+  telefoneInput.addEventListener("focus", () => {
+    if (!telefoneInput.value.trim()) {
+      telefoneInput.value = "+55 ";
+    }
+  });
+
+  cpfInput.addEventListener("input", () => {
+    cpfInput.value = formatarCPF(cpfInput.value);
+  });
+
+  form.addEventListener("submit", (e) => {
+    limparErro();
+
+    const nome = document.getElementById("nome").value.trim();
+    const telefoneValor = telefoneInput.value.trim();
+    const cpfValor = cpfInput.value.trim();
+
+    if (!nome) {
+      e.preventDefault();
+      mostrarErro("Informe o nome do cliente.");
+      document.getElementById("nome").focus();
+      return;
+    }
+
+    if (!telefoneBRValidoFlexivel(telefoneValor)) {
+      e.preventDefault();
+      mostrarErro("Informe um telefone válido com +55 e DDD. Pode ser com ou sem o 9º dígito.");
+      telefoneInput.focus();
+      return;
+    }
+
+    if (cpfValor && !cpfValido(cpfValor)) {
+      e.preventDefault();
+      mostrarErro("Informe um CPF válido.");
+      cpfInput.focus();
+      return;
+    }
+  });
+</script>
+{% endblock %}

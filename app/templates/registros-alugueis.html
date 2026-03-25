@@ -1,0 +1,497 @@
+{% extends "base.html" %}
+{% block title %}Registros de aluguéis{% endblock %}
+{% block page_title %}Registros de aluguéis{% endblock %}
+{% block page_subtitle %}Acompanhe o histórico de locações, entregas, devoluções e pagamentos.{% endblock %}
+
+{% block page_actions %}
+<div class="d-flex gap-2 flex-wrap">
+  <a href="/admin/registros-alugueis/novo" class="quick-chip">
+    <i class="bi bi-plus-lg"></i> Novo registro
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<style>
+  .rentals-page{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+    min-width:0;
+  }
+
+  .rentals-card{
+    overflow:hidden;
+    min-width:0;
+  }
+
+  .rentals-header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+
+  .rentals-search-form{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 24px 20px;
+    flex-wrap:wrap;
+  }
+
+  .rentals-search-form .search-input-wrap{
+    position:relative;
+    flex:1 1 340px;
+    min-width:260px;
+  }
+
+  .rentals-search-form .search-input-wrap i{
+    position:absolute;
+    top:50%;
+    left:14px;
+    transform:translateY(-50%);
+    color:var(--bs-secondary-color, #6c757d);
+    font-size:.95rem;
+    pointer-events:none;
+  }
+
+  .rentals-search-form .form-control{
+    padding-left:40px;
+    min-height:46px;
+    border-radius:14px;
+  }
+
+  .rentals-search-btn{
+    min-width:120px;
+    min-height:46px;
+    border-radius:14px;
+    font-weight:600;
+    padding:0 18px;
+    flex-shrink:0;
+  }
+
+  .table-responsive{
+    width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .rentals-table{
+    width:100%;
+    min-width:1180px;
+    table-layout:fixed;
+    margin-bottom:0;
+  }
+
+  .rentals-table th,
+  .rentals-table td{
+    vertical-align:middle;
+    padding:18px 14px;
+  }
+
+  .rentals-table th{
+    white-space:nowrap;
+  }
+
+  .rentals-table tbody tr{
+    transition:background-color .18s ease;
+  }
+
+  .rentals-table tbody tr:hover{
+    background:rgba(220, 53, 69, 0.03);
+  }
+
+  .rentals-table th:nth-child(1),
+  .rentals-table td:nth-child(1){ width:22%; }
+
+  .rentals-table th:nth-child(2),
+  .rentals-table td:nth-child(2){ width:10%; }
+
+  .rentals-table th:nth-child(3),
+  .rentals-table td:nth-child(3){ width:11%; }
+
+  .rentals-table th:nth-child(4),
+  .rentals-table td:nth-child(4){ width:13%; }
+
+  .rentals-table th:nth-child(5),
+  .rentals-table td:nth-child(5){ width:13%; }
+
+  .rentals-table th:nth-child(6),
+  .rentals-table td:nth-child(6){ width:16%; }
+
+  .rentals-table th:nth-child(7),
+  .rentals-table td:nth-child(7){ width:10%; }
+
+  .rentals-table th:nth-child(8),
+  .rentals-table td:nth-child(8){ width:10%; }
+
+  .rental-person-cell{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-width:0;
+  }
+
+  .rental-avatar{
+    width:42px;
+    height:42px;
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size:.95rem;
+    color:#fff;
+    background:linear-gradient(135deg, #dc3545, #b02a37);
+    box-shadow:0 10px 24px rgba(220, 53, 69, 0.18);
+    flex-shrink:0;
+  }
+
+  .rental-main{
+    font-weight:700;
+    color:var(--bs-heading-color, #212529);
+    line-height:1.15;
+    margin-bottom:2px;
+    word-break:break-word;
+  }
+
+  .rental-sub{
+    font-size:.88rem;
+    color:var(--bs-secondary-color, #6c757d);
+    word-break:break-word;
+  }
+
+  .table-muted{
+    color:var(--bs-secondary-color, #6c757d);
+  }
+
+  .table-strong{
+    font-weight:600;
+    color:var(--bs-heading-color, #212529);
+    display:block;
+    word-break:break-word;
+  }
+
+  .status-pill{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:7px 12px;
+    border-radius:999px;
+    font-size:.83rem;
+    font-weight:700;
+    white-space:nowrap;
+    max-width:100%;
+  }
+
+  .status-pill.is-success{
+    background:rgba(25, 135, 84, 0.12);
+    color:#198754;
+  }
+
+  .status-pill.is-warning{
+    background:rgba(255, 193, 7, 0.16);
+    color:#9a6700;
+  }
+
+  .status-pill.is-danger{
+    background:rgba(220, 53, 69, 0.12);
+    color:#dc3545;
+  }
+
+  .status-pill.is-info{
+    background:rgba(13, 202, 240, 0.14);
+    color:#0c63e4;
+  }
+
+  .status-pill.is-neutral{
+    background:rgba(108, 117, 125, 0.12);
+    color:#6c757d;
+  }
+
+  .status-stack{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:flex-start;
+  }
+
+  .rentals-action-btn{
+    border-radius:12px;
+    font-weight:600;
+    padding:8px 14px;
+    white-space:nowrap;
+  }
+
+  .empty-state{
+    padding:40px 20px;
+    text-align:center;
+  }
+
+  .empty-state-icon{
+    width:64px;
+    height:64px;
+    border-radius:18px;
+    margin:0 auto 14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(220, 53, 69, 0.08);
+    color:#dc3545;
+    font-size:1.5rem;
+  }
+
+  .empty-state-title{
+    font-size:1.05rem;
+    font-weight:700;
+    color:var(--bs-heading-color, #212529);
+    margin-bottom:6px;
+  }
+
+  .empty-state-text{
+    color:var(--bs-secondary-color, #6c757d);
+    max-width:420px;
+    margin:0 auto;
+  }
+
+  @media (max-width: 992px){
+    .rentals-search-form{
+      padding:0 18px 18px;
+    }
+
+    .rentals-table{
+      min-width:1080px;
+    }
+
+    .rentals-table th,
+    .rentals-table td{
+      padding:16px 12px;
+    }
+  }
+
+  @media (max-width: 768px){
+    .rentals-search-form{
+      padding:0 16px 16px;
+    }
+
+    .rentals-search-form .search-input-wrap{
+      min-width:100%;
+    }
+
+    .rentals-search-btn{
+      width:100%;
+    }
+
+    .rentals-table{
+      min-width:980px;
+    }
+
+    .rental-person-cell{
+      min-width:unset;
+    }
+  }
+</style>
+
+<div class="rentals-page">
+  <section class="panel-card students-table-card rentals-card">
+    <div class="panel-card-header students-table-header rentals-header">
+      <div>
+        <div class="section-eyebrow">HISTÓRICO DE LOCAÇÕES</div>
+        <p class="table-helper mb-0">
+          Visualize quem alugou, qual kit foi entregue, situação do pagamento e condição de devolução.
+        </p>
+      </div>
+    </div>
+    <br>
+
+    <form class="rentals-search-form" method="get" action="/admin/registros-alugueis">
+      <div class="search-input-wrap">
+        <i class="bi bi-search"></i>
+        <input
+          type="text"
+          class="form-control"
+          name="busca"
+          value="{{ busca }}"
+          placeholder="Buscar por cliente, kit, status ou pagamento"
+        >
+      </div>
+
+      <button class="btn btn-danger rentals-search-btn" type="submit">
+        Buscar
+      </button>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-modern students-table rentals-table align-middle">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Kit</th>
+            <th>Entrega</th>
+            <th>Recebimento</th>
+            <th>Pagamento</th>
+            <!--<th>Condição</th>-->
+            <th>Status</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for registro in registros %}
+          <tr>
+            <td>
+              <div class="rental-person-cell">
+                <div class="rental-avatar">
+                  {{ (registro.cliente.nome or 'C')[0] | upper }}
+                </div>
+                <div>
+                  <div class="rental-main">
+                    {{ registro.cliente.nome or 'Cliente sem nome' }}
+                  </div>
+                  <div class="rental-sub">
+                    {{ registro.cliente.telefone or 'Telefone não informado' }}
+                  </div>
+                </div>
+              </div>
+            </td>
+
+            <td>
+              <div class="rental-main">{{ registro.kit.nome_kit or 'Kit não informado' }}</div>
+              <div class="rental-sub">
+                {{ registro.kit.codigo_kit or 'Sem código' }}
+              </div>
+            </td>
+
+            <td>
+              {% if registro.data_entrega %}
+                <span class="table-strong">
+                  {{ registro.data_entrega.strftime('%d/%m/%Y %H:%M') }}
+                </span>
+              {% else %}
+                <span class="table-muted">Não informado</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if registro.data_recebimento %}
+                <span class="table-strong">
+                  {{ registro.data_recebimento.strftime('%d/%m/%Y %H:%M') }}
+                </span>
+              {% else %}
+                <span class="table-muted">Pendente</span>
+              {% endif %}
+            </td>
+
+            <td>
+              <div class="status-stack">
+                {% if registro.pagamento_status == 'pago' %}
+                  <span class="status-pill is-success">
+                    <i class="bi bi-check-circle"></i> Pago
+                  </span>
+                {% elif registro.pagamento_status == 'parcial' %}
+                  <span class="status-pill is-warning">
+                    <i class="bi bi-clock-history"></i> Parcial
+                  </span>
+                {% elif registro.pagamento_status == 'pendente' %}
+                  <span class="status-pill is-danger">
+                    <i class="bi bi-exclamation-circle"></i> Pendente
+                  </span>
+                {% else %}
+                  <span class="status-pill is-neutral">
+                    <i class="bi bi-dash-circle"></i> Não definido
+                  </span>
+                {% endif %}
+
+                {% if registro.valor_pago is not none %}
+                  <span class="status-pill is-info">
+                    <i class="bi bi-cash-stack"></i>
+                    R$ {{ '%.2f'|format(registro.valor_pago) }}
+                  </span>
+                {% endif %}
+              </div>
+            </td>
+            <!--
+            <td>
+              <div class="status-stack">
+                {% if registro.condicao_entrega %}
+                  <span class="status-pill is-info">
+                    <i class="bi bi-box-seam"></i>
+                    {{ registro.condicao_entrega }}
+                  </span>
+                {% endif %}
+
+                {% if registro.condicao_recebimento %}
+                  <span class="status-pill is-neutral">
+                    <i class="bi bi-arrow-return-left"></i>
+                    {{ registro.condicao_recebimento }}
+                  </span>
+                {% endif %}
+
+                {% if not registro.condicao_entrega and not registro.condicao_recebimento %}
+                  <span class="table-muted">Não informado</span>
+                {% endif %}
+              </div>
+            </td>
+          -->
+
+            <td>
+              {% if registro.status == 'reservado' %}
+                <span class="status-pill is-warning">
+                  <i class="bi bi-calendar-event"></i> Reservado
+                </span>
+              {% elif registro.status == 'entregue' %}
+                <span class="status-pill is-info">
+                  <i class="bi bi-truck"></i> Entregue
+                </span>
+              {% elif registro.status == 'finalizado' %}
+                <span class="status-pill is-success">
+                  <i class="bi bi-check2-circle"></i> Finalizado
+                </span>
+              {% elif registro.status == 'cancelado' %}
+                <span class="status-pill is-danger">
+                  <i class="bi bi-x-circle"></i> Cancelado
+                </span>
+              {% else %}
+                <span class="status-pill is-neutral">
+                  <i class="bi bi-dash-circle"></i> {{ registro.status or 'Sem status' }}
+                </span>
+              {% endif %}
+            </td>
+
+            <td class="text-end">
+              <a
+                class="btn btn-sm btn-outline-danger rentals-action-btn"
+                href="/admin/registros-alugueis/{{ registro.id }}/editar"
+              >
+                <i class="bi bi-pencil-square"></i> Editar
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <i class="bi bi-journal-text"></i>
+                </div>
+                <div class="empty-state-title">Nenhum registro encontrado</div>
+                <div class="empty-state-text">
+                  Ainda não existem registros de aluguel compatíveis com a busca atual.
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+{% endblock %}

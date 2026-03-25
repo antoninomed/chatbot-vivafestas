@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Kits Festa{% endblock %}
+{% block page_title %}Gestão de kits{% endblock %}
+{% block page_subtitle %}Visualize os kits, acompanhe disponibilidade e acesse os registros de locação.{% endblock %}
+{% block page_actions %}
+<a href="/admin/kits/novo" class="quick-chip">
+  <i class="bi bi-plus-lg"></i> Adicionar kit
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="students-page">
+  <section class="panel-card students-table-card">
+    <div class="panel-card-header students-table-header">
+      <div>
+        <div class="section-eyebrow">CATÁLOGO DE KITS</div>
+        <p class="table-helper mb-0">
+          Relação de kits com tema, categoria, disponibilidade e valor de locação.
+        </p>
+      </div>
+    </div>
+
+    <form class="students-search-form" method="get" action="/admin/kits">
+      <div class="search-input-wrap">
+        <i class="bi bi-search"></i>
+        <input
+          type="text"
+          class="form-control"
+          name="busca"
+          value="{{ busca }}"
+          placeholder="Buscar por nome, tema, categoria ou código"
+        >
+      </div>
+      <button class="btn btn-danger students-search-btn" type="submit">Buscar</button>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-modern students-table align-middle">
+        <thead>
+          <tr>
+            <th>Kit</th>
+            <th>Categoria</th>
+            <th>Tema</th>
+            <th>Disponibilidade</th>
+            <th>Valor</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for kit in kits %}
+          <tr>
+            <td>
+              <div class="student-name-cell">
+                {% if kit.fotos and kit.fotos|length > 0 %}
+                  <img
+                    src="{{ kit.fotos[0].foto_url }}"
+                    alt="{{ kit.nome_kit }}"
+                    class="kit-thumb"
+                  >
+                {% else %}
+                  <div class="student-avatar">
+                    {{ (kit.nome_kit or 'K')[0] | upper }}
+                  </div>
+                {% endif %}
+
+                <div>
+                  <div class="student-name">{{ kit.nome_kit }}</div>
+                  <div class="table-muted">{{ kit.codigo_kit or 'Sem código' }}</div>
+                </div>
+              </div>
+            </td>
+
+            <td>
+              <span class="table-strong">{{ kit.categoria or 'Não informada' }}</span>
+            </td>
+
+            <td>
+              <span class="table-muted">{{ kit.tema or 'Não informado' }}</span>
+            </td>
+
+            <td>
+              <span class="status-pill {% if (kit.status_disponibilidade or '')|lower in ['disponível','disponivel','livre'] %}is-success{% else %}is-warning{% endif %}">
+                {{ kit.status_disponibilidade or 'Não informado' }}
+              </span>
+            </td>
+
+            <td>
+              <span class="table-strong">{{ kit.valor_locacao or 'Sob consulta' }}</span>
+            </td>
+
+            <td class="text-end">
+              <a class="btn btn-sm students-action-btn" href="/admin/kits/{{ kit.id }}/editar">
+                <i class="bi bi-pencil-square"></i> Editar
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <div class="empty-state-icon"><i class="bi bi-gift"></i></div>
+                <div class="empty-state-title">Nenhum kit encontrado</div>
+                <div class="empty-state-text">
+                  Não há registros compatíveis com a busca realizada no momento.
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<style>
+  .kit-thumb {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+    flex-shrink: 0;
+    background: #fff;
+  }
+</style>
+{% endblock %}
