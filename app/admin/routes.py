@@ -4,6 +4,8 @@ import mimetypes
 import uuid
 from pathlib import Path
 
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Request, Form, Depends, Response, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -70,6 +72,27 @@ def _somente_digitos(valor: str | None) -> str:
     if not valor:
         return ""
     return "".join(ch for ch in str(valor) if ch.isdigit())
+
+
+def _timezone_tenant(db: Session, tenant_id):
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    tz_nome = (tenant.timezone if tenant and tenant.timezone else "America/Fortaleza").strip()
+
+    try:
+        return ZoneInfo(tz_nome)
+    except Exception:
+        return ZoneInfo("America/Fortaleza")
+
+
+def _para_horario_local(dt, tz):
+    if not dt:
+        return None
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return dt.astimezone(tz)
+
 
 
 def _normalizar_telefone(telefone: str | None) -> str:
@@ -449,6 +472,7 @@ def _query_conversas(usuario, db: Session):
 def _enriquecer_conversas(db: Session, tenant_id, conversas, busca: str = ""):
     clientes_map = _mapa_clientes_por_telefone(db, tenant_id)
     busca_normalizada = (busca or "").strip().lower()
+    tz = _timezone_tenant(db, tenant_id)
     resultado = []
 
     for conversa in conversas:
@@ -467,7 +491,7 @@ def _enriquecer_conversas(db: Session, tenant_id, conversas, busca: str = ""):
 
         item = {
             "telefone_usuario": telefone,
-            "ultima_data": conversa.ultima_data,
+            "ultima_data": _para_horario_local(conversa.ultima_data, tz),
             "status_atendimento": conversa.status_atendimento,
             "atendimento_humano": conversa.atendimento_humano,
             "prioridade": conversa.prioridade,
@@ -586,6 +610,11 @@ def detalhe_conversa(telefone: str, request: Request, db: Session = Depends(get_
         .all()
     )
 
+    tz = _timezone_tenant(db, usuario.tenant_id)
+
+    for msg in mensagens:
+        msg.criada_em = _para_horario_local(msg.criada_em, tz)
+
     conversa = (
         db.query(Conversation)
         .filter(
@@ -631,6 +660,11 @@ def carregar_mensagens_conversa(telefone: str, request: Request, db: Session = D
         .all()
     )
 
+    tz = _timezone_tenant(db, usuario.tenant_id)
+
+    for msg in mensagens:
+        msg.criada_em = _para_horario_local(msg.criada_em, tz)
+
     conversa = (
         db.query(Conversation)
         .filter(
@@ -639,6 +673,9 @@ def carregar_mensagens_conversa(telefone: str, request: Request, db: Session = D
         )
         .first()
     )
+
+    if conversa and conversa.last_message_at:
+        conversa.last_message_at = _para_horario_local(conversa.last_message_at, tz)
 
     nome_cliente = _buscar_nome_cliente_por_telefone(db, usuario.tenant_id, telefone)
     nome_exibicao = nome_cliente or telefone
